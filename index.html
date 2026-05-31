@@ -6,7 +6,7 @@
     <title>Бизнес-приложение</title>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
-        import { getFirestore, doc, getDoc, setDoc, collection, getDocs, addDoc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, collection, getDocs, addDoc, deleteDoc, updateDoc, arrayUnion, arrayRemove, increment } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
         
         const firebaseConfig = {
             apiKey: "AIzaSyAqrvzxSxjGllPGkdzdRfW-I37VjLL7EQs",
@@ -23,44 +23,171 @@
     </script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        /* Переменные для светлой и тёмной темы */
+        :root {
+            --bg-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --card-bg: #ffffff;
+            --text-primary: #333333;
+            --text-secondary: #666666;
+            --border-color: #ddd;
+            --hover-bg: #f8f9fa;
+            --banner-bg: #fff3cd;
+            --banner-text: #856404;
+            --unread-border: #ffc107;
+        }
+        
+        body.dark {
+            --bg-primary: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            --card-bg: #1e1e2e;
+            --text-primary: #e0e0e0;
+            --text-secondary: #aaaaaa;
+            --border-color: #333;
+            --hover-bg: #2a2a3e;
+            --banner-bg: #2d2d1c;
+            --banner-text: #d4b847;
+            --unread-border: #ff9800;
+        }
+        
+        body {
+            background: var(--bg-primary);
+            min-height: 100vh;
+            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            transition: background 0.3s ease;
+        }
+        
         .app-container { max-width: 1200px; margin: 0 auto; }
-        .main-screen { background: white; border-radius: 20px; padding: 40px; max-width: 600px; margin: 0 auto 30px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
-        .main-photo-container { width: 200px; height: 200px; margin: 0 auto 20px; border-radius: 50%; overflow: hidden; background: #f0f0f0; display: flex; align-items: center; justify-content: center; position: relative; border: 3px solid #667eea; cursor: pointer; }
+        
+        /* Кнопка тёмной темы */
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--card-bg);
+            color: var(--text-primary);
+            border: none;
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 1001;
+            transition: transform 0.3s;
+        }
+        .theme-toggle:hover { transform: scale(1.05); }
+        
+        /* Кнопки шаринга */
+        .share-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        .share-btn {
+            background: none;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 5px 10px;
+            border-radius: 20px;
+            transition: all 0.2s;
+        }
+        .share-btn:hover { background: var(--hover-bg); transform: scale(1.05); }
+        
+        .main-screen {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            margin: 0 auto 30px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        .main-photo-container {
+            width: 200px;
+            height: 200px;
+            margin: 0 auto 20px;
+            border-radius: 50%;
+            overflow: hidden;
+            background: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            border: 3px solid #667eea;
+            cursor: pointer;
+        }
         .main-photo { width: 100%; height: 100%; object-fit: cover; }
         .photo-placeholder { font-size: 60px; color: #999; }
-        .upload-photo-btn { position: absolute; bottom: 5px; right: 5px; background: #667eea; color: white; border: none; border-radius: 50%; width: 35px; height: 35px; font-size: 20px; cursor: pointer; display: none; z-index: 10; }
-        .business-name { color: #333; margin-bottom: 15px; font-size: 2.5em; animation: fadeInUp 0.8s ease-out; }
-        .business-subtitle { color: #666; margin-bottom: 30px; font-size: 1.1em; animation: fadeInUp 0.8s ease-out 0.2s both; }
+        .upload-photo-btn {
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 35px;
+            height: 35px;
+            font-size: 20px;
+            cursor: pointer;
+            display: none;
+            z-index: 10;
+        }
+        .business-name { color: var(--text-primary); margin-bottom: 15px; font-size: 2.5em; animation: fadeInUp 0.8s ease-out; }
+        .business-subtitle { color: var(--text-secondary); margin-bottom: 30px; font-size: 1.1em; animation: fadeInUp 0.8s ease-out 0.2s both; }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
-        .btn-more, .btn-posts, .btn-questions { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 15px 40px; font-size: 18px; border-radius: 50px; cursor: pointer; margin: 10px; transition: transform 0.3s; }
+        .btn-more, .btn-posts, .btn-questions {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 18px;
+            border-radius: 50px;
+            cursor: pointer;
+            margin: 10px;
+            transition: transform 0.3s;
+        }
         .btn-more:hover, .btn-posts:hover, .btn-questions:hover { transform: translateY(-2px); }
-        .admin-login-btn { background: transparent; border: 1px solid #ddd; color: #999; padding: 5px 15px; font-size: 12px; border-radius: 20px; cursor: pointer; margin-top: 15px; }
-        .admin-panel-main { margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 10px; display: none; }
+        .admin-login-btn {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 5px 15px;
+            font-size: 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+        .admin-panel-main { margin-top: 20px; padding: 15px; background: var(--hover-bg); border-radius: 10px; display: none; }
         .admin-panel-main button { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; margin: 5px; }
-        .detail-screen { display: none; background: white; border-radius: 20px; max-width: 900px; margin: 0 auto; max-height: 85vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
-        .posts-screen, .questions-screen { display: none; background: white; border-radius: 20px; padding: 30px; margin-top: 30px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+        .detail-screen { display: none; background: var(--card-bg); border-radius: 20px; max-width: 900px; margin: 0 auto; max-height: 85vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+        .posts-screen, .questions-screen { display: none; background: var(--card-bg); border-radius: 20px; padding: 30px; margin-top: 30px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
         .posts-header, .questions-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; flex-wrap: wrap; gap: 15px; }
-        .posts-header h2, .questions-header h2 { color: #333; font-size: 28px; }
+        .posts-header h2, .questions-header h2 { color: var(--text-primary); font-size: 28px; }
         .name-field-wrapper { margin-bottom: 15px; }
-        .name-field-wrapper input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-family: inherit; font-size: 16px; }
-        .question-form { background: #f8f9fa; padding: 25px; border-radius: 15px; margin-bottom: 20px; }
-        .question-form h3 { margin-bottom: 20px; color: #333; }
-        .question-form textarea { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 8px; font-family: inherit; font-size: 16px; resize: vertical; min-height: 100px; }
+        .name-field-wrapper input { width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--card-bg); color: var(--text-primary); font-family: inherit; font-size: 16px; }
+        .question-form { background: var(--hover-bg); padding: 25px; border-radius: 15px; margin-bottom: 20px; }
+        .question-form h3 { margin-bottom: 20px; color: var(--text-primary); }
+        .question-form textarea { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--card-bg); color: var(--text-primary); font-family: inherit; font-size: 16px; resize: vertical; min-height: 100px; }
         .question-form button { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; border: none; padding: 12px 30px; border-radius: 8px; cursor: pointer; font-size: 16px; }
-        .info-banner { background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px 15px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; color: #856404; }
-        .message-card { background: #f8f9fa; border-radius: 15px; padding: 20px; margin-bottom: 20px; border-left: 4px solid #667eea; }
+        .info-banner { background: var(--banner-bg); border-left: 4px solid var(--banner-text); padding: 12px 15px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; color: var(--banner-text); }
+        .message-card { background: var(--hover-bg); border-radius: 15px; padding: 20px; margin-bottom: 20px; border-left: 4px solid #667eea; transition: border 0.3s; }
+        .message-card.unread { border-left: 4px solid var(--unread-border); background: var(--hover-bg); }
         .message-name { font-weight: bold; color: #667eea; margin-bottom: 5px; }
-        .message-date { font-size: 12px; color: #999; margin-bottom: 10px; }
-        .message-question-text { color: #333; margin-bottom: 15px; padding: 10px; background: white; border-radius: 10px; }
+        .message-date { font-size: 12px; color: var(--text-secondary); margin-bottom: 10px; }
+        .message-question-text { color: var(--text-primary); margin-bottom: 15px; padding: 10px; background: var(--card-bg); border-radius: 10px; }
         .reply-thread { margin-top: 15px; }
         .reply-thread.collapsed { display: none; }
-        .reply-item { background: #f1f8e9; border-radius: 12px; padding: 12px; margin-bottom: 10px; border-left: 3px solid #4caf50; }
+        .reply-item { background: var(--card-bg); border-radius: 12px; padding: 12px; margin-bottom: 10px; border-left: 3px solid #4caf50; }
         .reply-author { font-weight: bold; font-size: 13px; margin-bottom: 5px; }
         .reply-author.admin { color: #e65100; }
         .reply-author.visitor { color: #1565c0; }
-        .reply-text { color: #333; margin-bottom: 8px; }
-        .reply-date { font-size: 11px; color: #999; margin-bottom: 8px; }
+        .reply-text { color: var(--text-primary); margin-bottom: 8px; }
+        .reply-date { font-size: 11px; color: var(--text-secondary); margin-bottom: 8px; }
         .reply-actions { display: flex; gap: 10px; margin-top: 5px; flex-wrap: wrap; }
         .reply-actions button { background: none; border: none; font-size: 12px; cursor: pointer; padding: 4px 8px; border-radius: 5px; }
         .reply-actions .reply-to-reply-btn { background: #17a2b8; color: white; }
@@ -69,18 +196,18 @@
         .admin-buttons { margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap; }
         .admin-buttons button { padding: 8px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; }
         .admin-buttons .delete-btn { background: #dc3545; color: white; }
-        .reactions { display: flex; gap: 15px; margin-top: 15px; padding-top: 10px; border-top: 1px solid #ddd; }
-        .reaction-btn { background: none; border: none; font-size: 20px; cursor: pointer; padding: 5px 10px; border-radius: 20px; transition: transform 0.2s ease, background-color 0.2s ease, color 0.2s ease; }
-        .reaction-btn:hover { background: #e0e0e0; transform: scale(1.05); }
+        .reactions { display: flex; gap: 15px; margin-top: 15px; padding-top: 10px; border-top: 1px solid var(--border-color); }
+        .reaction-btn { background: none; border: none; font-size: 20px; cursor: pointer; padding: 5px 10px; border-radius: 20px; transition: all 0.2s; }
         .reaction-btn.active { background: #667eea; color: white; }
         .reaction-animate { animation: reactionPop 0.2s ease-out; }
-        @keyframes reactionPop { 0% { transform: scale(1); } 50% { transform: scale(1.2); background-color: #ffd700; } 100% { transform: scale(1); } }
-        .reaction-count { font-size: 14px; margin-left: 5px; color: #666; }
-        .post-card { background: #f8f9fa; border-radius: 15px; padding: 20px; margin-bottom: 20px; }
-        .post-date { color: #999; font-size: 12px; margin-bottom: 10px; }
-        .post-title { color: #333; font-size: 20px; margin-bottom: 10px; }
-        .post-content { color: #666; line-height: 1.5; margin-bottom: 15px; }
-        .post-reactions { display: flex; gap: 15px; margin-top: 15px; padding-top: 10px; border-top: 1px solid #ddd; }
+        @keyframes reactionPop { 50% { transform: scale(1.2); background-color: #ffd700; } }
+        .reaction-count { font-size: 14px; margin-left: 5px; color: var(--text-secondary); }
+        .post-card { background: var(--hover-bg); border-radius: 15px; padding: 20px; margin-bottom: 20px; }
+        .post-date { color: var(--text-secondary); font-size: 12px; margin-bottom: 10px; }
+        .post-title { color: var(--text-primary); font-size: 20px; margin-bottom: 10px; }
+        .post-content { color: var(--text-primary); line-height: 1.5; margin-bottom: 15px; }
+        .post-stats { font-size: 12px; color: var(--text-secondary); margin-bottom: 10px; }
+        .post-reactions { display: flex; gap: 15px; margin-top: 15px; padding-top: 10px; border-top: 1px solid var(--border-color); }
         .post-actions { display: none; gap: 10px; margin-top: 15px; }
         .post-actions button { background: #6c757d; color: white; border: none; padding: 5px 15px; border-radius: 5px; cursor: pointer; }
         .post-actions button.delete-btn { background: #dc3545; }
@@ -89,36 +216,46 @@
         .detail-content .description-area { order: 1; margin-bottom: 30px; }
         .detail-content .gallery { order: 2; }
         .detail-content .image-upload { order: 3; }
-        .admin-panel-detail { background: #f8f9fa; padding: 15px; border-radius: 10px; margin-bottom: 25px; display: none; gap: 15px; flex-wrap: wrap; border: 1px solid #dee2e6; order: 0; }
+        .admin-panel-detail { background: var(--hover-bg); padding: 15px; border-radius: 10px; margin-bottom: 25px; display: none; gap: 15px; flex-wrap: wrap; order: 0; }
         .admin-panel-detail button { background: #6c757d; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; }
         .gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px; }
-        .image-card { background: #f8f9fa; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); position: relative; cursor: pointer; }
-        .image-card img { width: 100%; height: 200px; object-fit: cover; }
-        .delete-img-btn { position: absolute; top: 10px; right: 10px; background: #dc3545; color: white; border: none; border-radius: 5px; padding: 5px 10px; cursor: pointer; display: none; z-index: 10; }
-        .image-upload { text-align: center; padding: 15px; border: 2px dashed #dee2e6; border-radius: 10px; cursor: pointer; margin-bottom: 20px; display: none; }
+        .media-card { background: var(--hover-bg); border-radius: 10px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); position: relative; cursor: pointer; transition: transform 0.2s; }
+        .media-card:hover { transform: scale(1.02); }
+        .media-card img, .media-card video { width: 100%; height: 200px; object-fit: cover; }
+        .delete-media-btn { position: absolute; top: 10px; right: 10px; background: #dc3545; color: white; border: none; border-radius: 5px; padding: 5px 10px; cursor: pointer; display: none; z-index: 10; }
+        .image-upload { text-align: center; padding: 15px; border: 2px dashed var(--border-color); border-radius: 10px; cursor: pointer; margin-bottom: 20px; display: none; }
         .image-upload label { cursor: pointer; display: inline-block; padding: 10px 20px; background: #667eea; color: white; border-radius: 5px; margin-top: 10px; }
         .description-area { margin-top: 20px; width: 100%; }
-        .description-text { background: #f8f9fa; padding: 20px; border-radius: 10px; line-height: 1.6; color: #333; min-height: 200px; }
+        .description-text { background: var(--hover-bg); padding: 20px; border-radius: 10px; line-height: 1.6; color: var(--text-primary); min-height: 200px; }
         .description-text[contenteditable="true"] { outline: 2px solid #28a745; background-color: #fff3cd; cursor: text; }
         .btn-back { background: #6c757d; color: white; border: none; padding: 12px 25px; border-radius: 8px; cursor: pointer; margin-bottom: 20px; font-size: 16px; }
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; }
-        .modal-content { background: white; padding: 30px; border-radius: 20px; text-align: center; max-width: 350px; width: 90%; }
-        .modal-content input { padding: 10px; font-size: 18px; margin: 15px 0; border: 1px solid #ddd; border-radius: 8px; width: 150px; }
+        .modal-content { background: var(--card-bg); padding: 30px; border-radius: 20px; text-align: center; max-width: 350px; width: 90%; }
+        .modal-content input { padding: 10px; font-size: 18px; margin: 15px 0; border: 1px solid var(--border-color); border-radius: 8px; width: 150px; background: var(--card-bg); color: var(--text-primary); }
         .modal-content button { background: #667eea; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; margin: 5px; }
         .post-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 3000; }
-        .post-modal-content { background: white; padding: 30px; border-radius: 20px; max-width: 500px; width: 90%; }
-        .post-modal-content input, .post-modal-content textarea { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 8px; }
+        .post-modal-content { background: var(--card-bg); padding: 30px; border-radius: 20px; max-width: 500px; width: 90%; }
+        .post-modal-content input, .post-modal-content textarea { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--card-bg); color: var(--text-primary); }
         .post-modal-content textarea { min-height: 150px; }
         .post-modal-content button { background: #667eea; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; margin-right: 10px; }
         .fullscreen-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); justify-content: center; align-items: center; z-index: 2000; cursor: pointer; }
-        .fullscreen-modal img { max-width: 90%; max-height: 90%; object-fit: contain; border-radius: 10px; }
+        .fullscreen-modal img, .fullscreen-modal video { max-width: 90%; max-height: 90%; object-fit: contain; border-radius: 10px; }
         .fullscreen-modal .close-fullscreen { position: absolute; top: 20px; right: 40px; color: white; font-size: 40px; cursor: pointer; }
-        .view-mode-badge { position: fixed; bottom: 20px; right: 20px; background: rgba(0,0,0,0.7); color: white; padding: 5px 15px; border-radius: 20px; font-size: 12px; z-index: 999; }
+        .view-mode-badge { position: fixed; bottom: 20px; right: 80px; background: rgba(0,0,0,0.7); color: white; padding: 5px 15px; border-radius: 20px; font-size: 12px; z-index: 999; }
         .add-post-btn, .admin-toggle-btn { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; display: none; }
-        @media (max-width: 768px) { .main-screen, .detail-screen, .posts-screen, .questions-screen { margin: 10px; } .gallery { grid-template-columns: 1fr; } .main-photo-container { width: 150px; height: 150px; } .posts-header, .questions-header { flex-direction: column; text-align: center; } }
+        
+        @media (max-width: 768px) {
+            .main-screen, .detail-screen, .posts-screen, .questions-screen { margin: 10px; }
+            .gallery { grid-template-columns: 1fr; }
+            .main-photo-container { width: 150px; height: 150px; }
+            .posts-header, .questions-header { flex-direction: column; text-align: center; }
+            .theme-toggle { top: 10px; right: 10px; width: 35px; height: 35px; font-size: 18px; }
+            .view-mode-badge { right: 60px; }
+        }
     </style>
 </head>
 <body>
+    <button class="theme-toggle" onclick="toggleTheme()" id="themeToggle">🌙</button>
     <div class="app-container">
         <div class="view-mode-badge" id="modeBadge">👁️ Режим просмотра</div>
 
@@ -136,6 +273,7 @@
         <div id="fullscreenModal" class="fullscreen-modal" onclick="closeFullscreen()">
             <span class="close-fullscreen">&times;</span>
             <img id="fullscreenImage" src="">
+            <video id="fullscreenVideo" controls style="display: none;"></video>
         </div>
 
         <div id="postModal" class="post-modal">
@@ -180,9 +318,9 @@
                 </div>
                 <h3>Галерея</h3>
                 <div class="gallery" id="gallery"></div>
-                <div id="imageUploadArea" class="image-upload" onclick="triggerImageUpload()">
-                    <div>📷 Нажмите или перетащите изображения</div>
-                    <label>Выбрать изображения</label>
+                <div id="mediaUploadArea" class="image-upload" onclick="triggerMediaUpload()">
+                    <div>📷 Нажмите или перетащите изображения и видео</div>
+                    <label>Выбрать файлы (JPG, PNG, MP4, WebM)</label>
                 </div>
             </div>
         </div>
@@ -219,7 +357,7 @@
     </div>
 
     <script type="module">
-        import { getFirestore, doc, getDoc, setDoc, collection, getDocs, addDoc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, collection, getDocs, addDoc, deleteDoc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
         
         const firebaseConfig = {
             apiKey: "AIzaSyAqrvzxSxjGllPGkdzdRfW-I37VjLL7EQs",
@@ -238,15 +376,53 @@
         const ADMIN_NAME = "Кухни Provento";
         let isAdmin = false;
         let isAdminPanelVisible = false;
-        let images = [];
+        let mediaItems = []; // фото и видео
         let posts = [];
         let messages = [];
         let editingPostId = null;
         let isTextEditingEnabled = false;
         let currentUserId = localStorage.getItem('userId');
+        let viewedPosts = JSON.parse(localStorage.getItem('viewedPosts') || '{}');
+        let viewedMessages = JSON.parse(localStorage.getItem('viewedMessages') || '{}');
         if (!currentUserId) { currentUserId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9); localStorage.setItem('userId', currentUserId); }
         
-        // Загрузка и автосохранение имени
+        // Тёмная тема
+        function toggleTheme() {
+            document.body.classList.toggle('dark');
+            const isDark = document.body.classList.contains('dark');
+            localStorage.setItem('darkTheme', isDark);
+            document.getElementById('themeToggle').innerText = isDark ? '☀️' : '🌙';
+        }
+        if (localStorage.getItem('darkTheme') === 'true') {
+            document.body.classList.add('dark');
+            document.getElementById('themeToggle').innerText = '☀️';
+        }
+        
+        // Шаринг
+        function sharePost(title, url) {
+            const shareUrl = window.location.origin + window.location.pathname + '?post=' + url;
+            const text = `📢 ${title}\n\nПосмотрите!`;
+            if (navigator.share) {
+                navigator.share({ title: title, text: text, url: shareUrl });
+            } else {
+                const vkUrl = `https://vk.com/share.php?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(title)}`;
+                const tgUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(text)}`;
+                const waUrl = `https://wa.me/?text=${encodeURIComponent(text + ' ' + shareUrl)}`;
+                prompt('Скопируйте ссылку:', shareUrl);
+            }
+        }
+        
+        function shareQuestion(name, question, id) {
+            const shareUrl = window.location.origin + window.location.pathname + '?q=' + id;
+            const text = `💬 Вопрос от ${name}: ${question.substring(0, 100)}...`;
+            if (navigator.share) {
+                navigator.share({ title: 'Вопрос', text: text, url: shareUrl });
+            } else {
+                prompt('Скопируйте ссылку на вопрос:', shareUrl);
+            }
+        }
+        
+        // Загрузка имени
         let currentVisitorName = localStorage.getItem('visitorName') || '';
         const nameInput = document.getElementById('visitorName');
         if (nameInput) {
@@ -258,7 +434,8 @@
                 }
             });
         }
-
+        
+        // Сортировка реакций
         function sortReactionsByCount(reactions) {
             const counts = [
                 { type: 'like', count: reactions.like?.length || 0 },
@@ -268,12 +445,12 @@
             counts.sort((a, b) => b.count - a.count);
             return counts.map(c => c.type);
         }
-
+        
+        // Реакции с анимацией
         async function addPostReaction(postId, reactionType, event) {
             const btn = event.currentTarget;
             btn.classList.add('reaction-animate');
             setTimeout(() => btn.classList.remove('reaction-animate'), 200);
-            
             const postRef = doc(db, "posts", postId);
             const postDoc = await getDoc(postRef);
             if (postDoc.exists()) {
@@ -282,13 +459,10 @@
                 if (reactions.like.includes(currentUserId)) userReactions.push('like');
                 if (reactions.heart.includes(currentUserId)) userReactions.push('heart');
                 if (reactions.angry.includes(currentUserId)) userReactions.push('angry');
-                
                 if (userReactions.includes(reactionType)) {
                     reactions[reactionType] = reactions[reactionType].filter(id => id !== currentUserId);
                 } else {
-                    for (const ur of userReactions) {
-                        reactions[ur] = reactions[ur].filter(id => id !== currentUserId);
-                    }
+                    for (const ur of userReactions) reactions[ur] = reactions[ur].filter(id => id !== currentUserId);
                     reactions[reactionType].push(currentUserId);
                 }
                 const sortedOrder = sortReactionsByCount(reactions);
@@ -296,12 +470,11 @@
                 await loadPosts();
             }
         }
-
+        
         async function addMessageReaction(messageId, reactionType, event) {
             const btn = event.currentTarget;
             btn.classList.add('reaction-animate');
             setTimeout(() => btn.classList.remove('reaction-animate'), 200);
-            
             const msgRef = doc(db, "messages", messageId);
             const msgDoc = await getDoc(msgRef);
             if (msgDoc.exists()) {
@@ -310,13 +483,10 @@
                 if (reactions.like.includes(currentUserId)) userReactions.push('like');
                 if (reactions.heart.includes(currentUserId)) userReactions.push('heart');
                 if (reactions.angry.includes(currentUserId)) userReactions.push('angry');
-                
                 if (userReactions.includes(reactionType)) {
                     reactions[reactionType] = reactions[reactionType].filter(id => id !== currentUserId);
                 } else {
-                    for (const ur of userReactions) {
-                        reactions[ur] = reactions[ur].filter(id => id !== currentUserId);
-                    }
+                    for (const ur of userReactions) reactions[ur] = reactions[ur].filter(id => id !== currentUserId);
                     reactions[reactionType].push(currentUserId);
                 }
                 const sortedOrder = sortReactionsByCount(reactions);
@@ -324,29 +494,46 @@
                 await loadMessages();
             }
         }
-
+        
+        // Подсчёт просмотров постов
+        async function incrementPostView(postId) {
+            if (viewedPosts[postId]) return;
+            viewedPosts[postId] = true;
+            localStorage.setItem('viewedPosts', JSON.stringify(viewedPosts));
+            const postRef = doc(db, "posts", postId);
+            await updateDoc(postRef, { views: increment(1) });
+        }
+        
+        async function incrementMessageView(messageId) {
+            if (viewedMessages[messageId]) return;
+            viewedMessages[messageId] = true;
+            localStorage.setItem('viewedMessages', JSON.stringify(viewedMessages));
+            const msgRef = doc(db, "messages", messageId);
+            await updateDoc(msgRef, { views: increment(1) });
+        }
+        
+        // Загрузка сообщений
         async function loadMessages() {
             try {
                 const querySnapshot = await getDocs(collection(db, "messages"));
                 messages = [];
                 querySnapshot.forEach((doc) => {
-                    messages.push({ id: doc.id, ...doc.data(), reactions: doc.data().reactions || { like: [], heart: [], angry: [] }, reactionOrder: doc.data().reactionOrder || ['like', 'heart', 'angry'] });
+                    messages.push({ id: doc.id, ...doc.data(), reactions: doc.data().reactions || { like: [], heart: [], angry: [] }, reactionOrder: doc.data().reactionOrder || ['like', 'heart', 'angry'], views: doc.data().views || 0 });
                 });
                 messages.sort((a, b) => new Date(b.date) - new Date(a.date));
                 renderMessages();
             } catch (error) { console.error("Ошибка загрузки сообщений:", error); }
         }
-
+        
         function renderReplyTree(replies, parentId = null, level = 0, collapsed = false) {
             const threadReplies = replies.filter(r => r.parentId === parentId);
             if (threadReplies.length === 0) return '';
-            
             let html = '<div class="reply-thread' + (collapsed ? ' collapsed' : '') + '">';
             for (const reply of threadReplies) {
                 const authorClass = reply.isAdmin ? 'admin' : 'visitor';
                 const authorName = reply.isAdmin ? ADMIN_NAME : (reply.authorName || 'Посетитель');
                 html += `
-                    <div class="reply-item" data-reply-id="${reply.id}">
+                    <div class="reply-item">
                         <div class="reply-author ${authorClass}">${escapeHtml(authorName)}</div>
                         <div class="reply-text">${escapeHtml(reply.text)}</div>
                         <div class="reply-date">📅 ${reply.date}</div>
@@ -361,14 +548,15 @@
             html += '</div>';
             return html;
         }
-
+        
         function renderMessages() {
             const container = document.getElementById('messagesList');
             if (!container) return;
             if (messages.length === 0) { container.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">Пока нет вопросов. Будьте первым!</div>'; return; }
             container.innerHTML = '';
-            
             for (const msg of messages) {
+                const hasAnswer = msg.answer && msg.answer.trim();
+                const unreadClass = (!hasAnswer && isAdmin) ? 'unread' : '';
                 const reactions = msg.reactions || { like: [], heart: [], angry: [] };
                 const likeCount = reactions.like.length;
                 const heartCount = reactions.heart.length;
@@ -377,7 +565,6 @@
                 const userHearted = reactions.heart.includes(currentUserId);
                 const userAngry = reactions.angry.includes(currentUserId);
                 const reactionOrder = msg.reactionOrder || sortReactionsByCount(reactions);
-                
                 let reactionsHtml = '<div class="reactions">';
                 for (const rt of reactionOrder) {
                     if (rt === 'like') reactionsHtml += `<button class="reaction-btn ${userLiked ? 'active' : ''}" onclick="addMessageReaction('${msg.id}', 'like', event)">👍 <span class="reaction-count">${likeCount}</span></button>`;
@@ -385,7 +572,6 @@
                     else if (rt === 'angry') reactionsHtml += `<button class="reaction-btn ${userAngry ? 'active' : ''}" onclick="addMessageReaction('${msg.id}', 'angry', event)">😡 <span class="reaction-count">${angryCount}</span></button>`;
                 }
                 reactionsHtml += '</div>';
-                
                 let replyTreeHtml = '';
                 const hasReplies = msg.replies && msg.replies.length > 0;
                 if (hasReplies) {
@@ -395,15 +581,15 @@
                         ${renderReplyTree(msg.replies, null, 0, collapsedState)}
                     `;
                 }
-                
                 const messageCard = document.createElement('div');
-                messageCard.className = 'message-card';
+                messageCard.className = `message-card ${unreadClass}`;
                 messageCard.innerHTML = `
                     <div class="message-name">👤 ${escapeHtml(msg.name)}</div>
-                    <div class="message-date">📅 ${msg.date}</div>
+                    <div class="message-date">📅 ${msg.date} | 👁️ ${msg.views || 0} просмотров</div>
                     <div class="message-question-text">❓ ${escapeHtml(msg.question)}</div>
                     <div class="reply-actions" style="margin-top: 10px;">
                         <button class="reply-to-reply-btn" onclick="window.showReplyToQuestionPrompt('${msg.id}')">💬 Ответить на вопрос</button>
+                        <button class="share-btn" onclick="shareQuestion('${escapeHtml(msg.name)}', '${escapeHtml(msg.question)}', '${msg.id}')">📤 Поделиться</button>
                     </div>
                     ${replyTreeHtml}
                     ${reactionsHtml}
@@ -414,20 +600,18 @@
                     ` : ''}
                 `;
                 container.appendChild(messageCard);
+                incrementMessageView(msg.id);
             }
         }
-
+        
         window.toggleReplies = function(messageId) {
             const current = localStorage.getItem(`collapsed_${messageId}`) === 'true';
             localStorage.setItem(`collapsed_${messageId}`, (!current).toString());
             renderMessages();
         };
-
+        
         window.showReplyToQuestionPrompt = async function(messageId) {
-            if (!currentVisitorName && !isAdmin) {
-                alert('Введите ваше имя в поле выше!');
-                return;
-            }
+            if (!currentVisitorName && !isAdmin) { alert('Введите ваше имя в поле выше!'); return; }
             const text = prompt('Ваш ответ на вопрос:');
             if (text && text.trim()) {
                 const date = new Date().toISOString().split('T')[0];
@@ -451,12 +635,9 @@
                 }
             }
         };
-
+        
         window.showReplyToReplyPrompt = async function(replyId, messageId) {
-            if (!currentVisitorName && !isAdmin) {
-                alert('Введите ваше имя в поле выше!');
-                return;
-            }
+            if (!currentVisitorName && !isAdmin) { alert('Введите ваше имя в поле выше!'); return; }
             const text = prompt('Ваш ответ:');
             if (text && text.trim()) {
                 const date = new Date().toISOString().split('T')[0];
@@ -480,7 +661,7 @@
                 }
             }
         };
-
+        
         window.deleteReply = async function(replyId, messageId) {
             if (confirm('Удалить этот ответ?')) {
                 const msgRef = doc(db, "messages", messageId);
@@ -494,7 +675,7 @@
                 }
             }
         };
-
+        
         window.toggleAdminPanel = function() {
             if (!isAdmin) { showPasswordModal('adminPanel'); return; }
             isAdminPanelVisible = !isAdminPanelVisible;
@@ -503,27 +684,27 @@
             else { btn.innerHTML = '🔧 Управление сообщениями'; btn.style.background = 'linear-gradient(135deg, #28a745 0%, #20c997 100%)'; }
             renderMessages();
         };
-
+        
         window.deleteMessage = async function(messageId) {
             if (confirm('Удалить этот вопрос со всеми ответами?')) {
                 try { await deleteDoc(doc(db, "messages", messageId)); await loadMessages(); alert('Вопрос удалён!'); }
                 catch (error) { console.error("Ошибка удаления:", error); alert('Ошибка удаления'); }
             }
         };
-
+        
         window.sendQuestion = async function() {
             const name = currentVisitorName;
             const question = document.getElementById('visitorQuestion').value.trim();
             if (!name || !question) { alert('Введите имя и вопрос!'); return; }
             const date = new Date().toISOString().split('T')[0];
             try {
-                await addDoc(collection(db, "messages"), { name, question, date, replies: [], reactions: { like: [], heart: [], angry: [] }, reactionOrder: ['like', 'heart', 'angry'] });
+                await addDoc(collection(db, "messages"), { name, question, date, replies: [], reactions: { like: [], heart: [], angry: [] }, reactionOrder: ['like', 'heart', 'angry'], views: 0 });
                 document.getElementById('visitorQuestion').value = '';
                 await loadMessages();
                 alert('Вопрос отправлен!');
             } catch (error) { console.error("Ошибка отправки вопроса:", error); alert('Ошибка отправки вопроса'); }
         };
-
+        
         window.showQuestionsScreen = function() {
             document.getElementById('mainScreen').style.display = 'none';
             document.getElementById('detailScreen').style.display = 'none';
@@ -534,19 +715,22 @@
             if (btn) { btn.innerHTML = '🔧 Управление сообщениями'; btn.style.background = 'linear-gradient(135deg, #28a745 0%, #20c997 100%)'; btn.style.display = isAdmin ? 'block' : 'none'; }
             loadMessages();
         };
-
+        
         function hideQuestionsScreen() { document.getElementById('questionsScreen').style.display = 'none'; document.getElementById('mainScreen').style.display = 'block'; }
-
+        
+        // Загрузка постов
         async function loadPosts() {
             try {
                 const querySnapshot = await getDocs(collection(db, "posts"));
                 posts = [];
-                querySnapshot.forEach((doc) => { posts.push({ id: doc.id, ...doc.data(), reactions: doc.data().reactions || { like: [], heart: [], angry: [] }, reactionOrder: doc.data().reactionOrder || ['like', 'heart', 'angry'] }); });
+                querySnapshot.forEach((doc) => {
+                    posts.push({ id: doc.id, ...doc.data(), reactions: doc.data().reactions || { like: [], heart: [], angry: [] }, reactionOrder: doc.data().reactionOrder || ['like', 'heart', 'angry'], views: doc.data().views || 0 });
+                });
                 posts.sort((a, b) => new Date(b.date) - new Date(a.date));
                 renderPosts();
             } catch (error) { console.error("Ошибка загрузки постов:", error); }
         }
-
+        
         function renderPosts() {
             const container = document.getElementById('postsList');
             if (!container) return;
@@ -561,7 +745,6 @@
                 const userHearted = reactions.heart.includes(currentUserId);
                 const userAngry = reactions.angry.includes(currentUserId);
                 const reactionOrder = post.reactionOrder || sortReactionsByCount(reactions);
-                
                 let reactionsHtml = '<div class="post-reactions">';
                 for (const rt of reactionOrder) {
                     if (rt === 'like') reactionsHtml += `<button class="reaction-btn ${userLiked ? 'active' : ''}" onclick="addPostReaction('${post.id}', 'like', event)">👍 <span class="reaction-count">${likeCount}</span></button>`;
@@ -569,13 +752,15 @@
                     else if (rt === 'angry') reactionsHtml += `<button class="reaction-btn ${userAngry ? 'active' : ''}" onclick="addPostReaction('${post.id}', 'angry', event)">😡 <span class="reaction-count">${angryCount}</span></button>`;
                 }
                 reactionsHtml += '</div>';
-                
                 const postCard = document.createElement('div');
                 postCard.className = 'post-card';
                 postCard.innerHTML = `
-                    <div class="post-date">📅 ${post.date}</div>
+                    <div class="post-date">📅 ${post.date} | 👁️ ${post.views || 0} просмотров</div>
                     <h3 class="post-title">${escapeHtml(post.title)}</h3>
                     <div class="post-content">${escapeHtml(post.content)}</div>
+                    <div class="share-buttons">
+                        <button class="share-btn" onclick="sharePost('${escapeHtml(post.title)}', '${post.id}')">📤 Поделиться</button>
+                    </div>
                     ${reactionsHtml}
                     <div class="post-actions" id="post-actions-${post.id}">
                         <button class="edit-btn" onclick="openEditPostModal('${post.id}')">✏️ Редактировать</button>
@@ -584,9 +769,10 @@
                 `;
                 container.appendChild(postCard);
                 if (isAdmin) { const actionsDiv = document.getElementById(`post-actions-${post.id}`); if (actionsDiv) actionsDiv.style.display = 'flex'; }
+                incrementPostView(post.id);
             }
         }
-
+        
         async function savePost() {
             const title = document.getElementById('postTitle').value.trim();
             const content = document.getElementById('postContent').value.trim();
@@ -594,25 +780,25 @@
             const date = new Date().toISOString().split('T')[0];
             try {
                 if (editingPostId) { const postRef = doc(db, "posts", editingPostId); await updateDoc(postRef, { title, content, date }); }
-                else { await addDoc(collection(db, "posts"), { title, content, date, reactions: { like: [], heart: [], angry: [] }, reactionOrder: ['like', 'heart', 'angry'] }); }
+                else { await addDoc(collection(db, "posts"), { title, content, date, reactions: { like: [], heart: [], angry: [] }, reactionOrder: ['like', 'heart', 'angry'], views: 0 }); }
                 await loadPosts(); closePostModal(); alert(editingPostId ? 'Пост обновлён!' : 'Пост добавлен!');
             } catch (error) { console.error("Ошибка сохранения поста:", error); alert('Ошибка сохранения поста'); }
         }
-
+        
         async function deletePost(postId) {
             if (confirm('Удалить этот пост?')) {
                 try { await deleteDoc(doc(db, "posts", postId)); await loadPosts(); alert('Пост удалён!'); }
                 catch (error) { console.error("Ошибка удаления поста:", error); alert('Ошибка удаления поста'); }
             }
         }
-
+        
         function openAddPostModal() {
             if (!isAdmin) { showPasswordModal('addPost'); return; }
             editingPostId = null; document.getElementById('postModalTitle').innerText = '➕ Добавить пост';
             document.getElementById('postTitle').value = ''; document.getElementById('postContent').value = '';
             document.getElementById('postModal').style.display = 'flex';
         }
-
+        
         function openEditPostModal(postId) {
             if (!isAdmin) return;
             const post = posts.find(p => p.id === postId);
@@ -621,9 +807,9 @@
             document.getElementById('postTitle').value = post.title; document.getElementById('postContent').value = post.content;
             document.getElementById('postModal').style.display = 'flex';
         }
-
+        
         function closePostModal() { document.getElementById('postModal').style.display = 'none'; editingPostId = null; }
-
+        
         function showPostsScreen() {
             document.getElementById('mainScreen').style.display = 'none';
             document.getElementById('detailScreen').style.display = 'none';
@@ -633,27 +819,141 @@
             const addBtn = document.getElementById('addPostBtn');
             if (addBtn) addBtn.style.display = isAdmin ? 'block' : 'none';
         }
-
+        
         function hidePostsScreen() { document.getElementById('postsScreen').style.display = 'none'; document.getElementById('mainScreen').style.display = 'block'; }
-
+        
+        // Галерея с фото и видео
+        async function loadMedia() {
+            try {
+                const docRef = doc(db, "businessData", "main");
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists() && docSnap.data().mediaItems) {
+                    mediaItems = docSnap.data().mediaItems;
+                } else {
+                    mediaItems = [];
+                }
+                renderGallery();
+            } catch (error) { console.error("Ошибка загрузки медиа:", error); }
+        }
+        
+        function renderGallery() {
+            const gallery = document.getElementById('gallery');
+            if (!gallery) return;
+            gallery.innerHTML = '';
+            if (mediaItems.length === 0) {
+                gallery.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">Пока нет файлов. Загрузите изображения или видео!</div>';
+                return;
+            }
+            mediaItems.forEach((item, index) => {
+                const card = document.createElement('div');
+                card.className = 'media-card';
+                if (item.type === 'video') {
+                    card.innerHTML = `<video src="${item.url}" onclick="event.stopPropagation(); openFullscreenVideo('${item.url}')"></video>`;
+                    const video = card.querySelector('video');
+                    video.addEventListener('click', (e) => { e.stopPropagation(); openFullscreenVideo(item.url); });
+                } else {
+                    card.innerHTML = `<img src="${item.url}" onclick="openFullscreenImage('${item.url}')">`;
+                }
+                card.innerHTML += `<button class="delete-media-btn" onclick="event.stopPropagation(); deleteMedia(${index})">🗑️ Удалить</button>`;
+                gallery.appendChild(card);
+            });
+            if (isAdmin) document.querySelectorAll('.delete-media-btn').forEach(btn => btn.style.display = 'block');
+        }
+        
+        async function saveMediaToFirebase() {
+            if (!isAdmin) return;
+            try {
+                const docRef = doc(db, "businessData", "main");
+                await setDoc(docRef, { mediaItems: mediaItems }, { merge: true });
+            } catch (error) { console.error("Ошибка сохранения медиа:", error); }
+        }
+        
+        async function addMedia(file) {
+            if (!isAdmin) return;
+            const reader = new FileReader();
+            await new Promise((resolve) => {
+                reader.onload = async function(e) {
+                    const isVideo = file.type.startsWith('video/');
+                    mediaItems.push({ url: e.target.result, name: file.name, type: isVideo ? 'video' : 'image' });
+                    await saveMediaToFirebase();
+                    renderGallery();
+                    resolve();
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+        
+        async function deleteMedia(index) {
+            if (!isAdmin) return;
+            mediaItems.splice(index, 1);
+            await saveMediaToFirebase();
+            renderGallery();
+        }
+        
+        function openFullscreenImage(url) {
+            document.getElementById('fullscreenImage').src = url;
+            document.getElementById('fullscreenImage').style.display = 'block';
+            document.getElementById('fullscreenVideo').style.display = 'none';
+            document.getElementById('fullscreenModal').style.display = 'flex';
+        }
+        
+        function openFullscreenVideo(url) {
+            const video = document.getElementById('fullscreenVideo');
+            video.src = url;
+            video.style.display = 'block';
+            document.getElementById('fullscreenImage').style.display = 'none';
+            document.getElementById('fullscreenModal').style.display = 'flex';
+            video.play();
+        }
+        
+        function closeFullscreen() {
+            const video = document.getElementById('fullscreenVideo');
+            video.pause();
+            video.src = '';
+            document.getElementById('fullscreenModal').style.display = 'none';
+        }
+        
+        const mediaInput = document.createElement('input');
+        mediaInput.type = 'file';
+        mediaInput.accept = 'image/*,video/mp4,video/webm';
+        mediaInput.multiple = true;
+        mediaInput.style.display = 'none';
+        mediaInput.onchange = async (event) => {
+            if (!isAdmin) return;
+            const files = Array.from(event.target.files);
+            for (const file of files) {
+                if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
+                    await addMedia(file);
+                } else {
+                    alert('Поддерживаются JPG, PNG, MP4, WebM');
+                }
+            }
+            mediaInput.value = '';
+            alert('Файлы загружены!');
+        };
+        document.body.appendChild(mediaInput);
+        
+        function triggerMediaUpload() { if (!isAdmin) showPasswordModal('media'); else mediaInput.click(); }
+        
+        // Остальные функции (сохранение в Firebase, загрузка данных, админ и т.д.)
         async function saveToFirebase(dataType, value) {
             if (!isAdmin) return;
-            try { const docRef = doc(db, "businessData", "main"); await setDoc(docRef, { [dataType]: value }, { merge: true }); alert("Изменения сохранены и видны всем!"); }
+            try { const docRef = doc(db, "businessData", "main"); await setDoc(docRef, { [dataType]: value }, { merge: true }); alert("Изменения сохранены!"); }
             catch (error) { console.error("Ошибка сохранения:", error); }
         }
-
+        
         async function saveImagesToFirebase(imagesArray) {
             if (!isAdmin) return;
             try { const docRef = doc(db, "businessData", "main"); await setDoc(docRef, { galleryImages: imagesArray }, { merge: true }); }
             catch (error) { console.error("Ошибка сохранения галереи:", error); }
         }
-
+        
         async function saveDescriptionBgColorToFirebase(color) {
             if (!isAdmin) return;
             try { const docRef = doc(db, "businessData", "main"); await setDoc(docRef, { descriptionBgColor: color }, { merge: true }); }
             catch (error) { console.error("Ошибка сохранения цвета фона:", error); }
         }
-
+        
         async function loadFromFirebase() {
             try {
                 const docRef = doc(db, "businessData", "main");
@@ -665,49 +965,45 @@
                     if (data.mainPhoto) { document.getElementById('mainPhoto').src = data.mainPhoto; document.getElementById('mainPhoto').style.display = 'block'; document.getElementById('photoPlaceholder').style.display = 'none'; }
                     if (data.businessDescription) document.getElementById('descriptionText').innerHTML = data.businessDescription;
                     if (data.descriptionBgColor) document.getElementById('descriptionText').style.backgroundColor = data.descriptionBgColor;
-                    if (data.galleryImages && Array.isArray(data.galleryImages)) { images = data.galleryImages; renderGallery(); }
+                    if (data.mediaItems) { mediaItems = data.mediaItems; renderGallery(); }
                 } else {
                     document.getElementById('mainTitle').innerText = "Название бизнеса";
                     document.getElementById('mainSubtitle').innerText = "Описание бизнеса";
-                    document.getElementById('descriptionText').innerHTML = "Здесь будет ваше описание. Войдите как администратор, чтобы изменить текст.";
+                    document.getElementById('descriptionText').innerHTML = "Здесь будет ваше описание.";
                 }
             } catch (error) { console.error("Ошибка загрузки из Firebase:", error); }
         }
-
-        function openFullscreen(imageUrl) { document.getElementById('fullscreenImage').src = imageUrl; document.getElementById('fullscreenModal').style.display = 'flex'; }
-        function closeFullscreen() { document.getElementById('fullscreenModal').style.display = 'none'; }
-        function openMainPhotoFullscreen() { const img = document.getElementById('mainPhoto'); if (img.style.display === 'block' && img.src) openFullscreen(img.src); }
-
+        
         function showPasswordModal(action) { pendingAction = action; document.getElementById('passwordModal').style.display = 'flex'; document.getElementById('adminPasswordInput').value = ''; }
         function closePasswordModal() { document.getElementById('passwordModal').style.display = 'none'; pendingAction = null; }
         let pendingAction = null;
-
+        
         async function checkAdminPassword() {
             const password = document.getElementById('adminPasswordInput').value;
             if (password === ADMIN_PASSWORD) {
                 isAdmin = true; closePasswordModal(); enableAdminMode();
                 if (pendingAction === 'photo') setTimeout(() => mainPhotoInput.click(), 100);
                 else if (pendingAction === 'editMain') editMainScreenText();
-                else if (pendingAction === 'uploadImage') setTimeout(() => galleryImageInput.click(), 100);
+                else if (pendingAction === 'media') setTimeout(() => mediaInput.click(), 100);
                 else if (pendingAction === 'addPost') openAddPostModal();
                 else if (pendingAction === 'adminPanel') toggleAdminPanel();
                 pendingAction = null;
             } else { alert('Неверный пароль!'); document.getElementById('adminPasswordInput').value = ''; }
         }
-
+        
         function enableAdminMode() {
             document.getElementById('modeBadge').innerHTML = '👑 Режим администратора';
             document.getElementById('modeBadge').style.background = 'rgba(40,167,69,0.9)';
             document.getElementById('uploadMainPhotoBtn').style.display = 'flex';
             document.getElementById('adminPanelMain').style.display = 'block';
             document.getElementById('adminPanelDetail').style.display = 'flex';
-            document.getElementById('imageUploadArea').style.display = 'block';
+            document.getElementById('mediaUploadArea').style.display = 'block';
             document.getElementById('addPostBtn').style.display = 'block';
             document.getElementById('adminToggleBtn').style.display = 'block';
-            document.querySelectorAll('.delete-img-btn').forEach(btn => btn.style.display = 'block');
+            document.querySelectorAll('.delete-media-btn').forEach(btn => btn.style.display = 'block');
             document.querySelectorAll('.post-actions').forEach(actions => actions.style.display = 'flex');
         }
-
+        
         const mainPhotoInput = document.createElement('input');
         mainPhotoInput.type = 'file'; mainPhotoInput.accept = 'image/*'; mainPhotoInput.style.display = 'none';
         mainPhotoInput.onchange = async (event) => {
@@ -726,7 +1022,7 @@
         };
         document.body.appendChild(mainPhotoInput);
         function triggerMainPhotoUpload() { if (!isAdmin) showPasswordModal('photo'); else mainPhotoInput.click(); }
-
+        
         async function editMainScreenText() {
             if (!isAdmin) { showPasswordModal('editMain'); return; }
             const newTitle = prompt('Введите новое название бизнеса:', document.getElementById('mainTitle').innerText);
@@ -734,18 +1030,18 @@
             if (newTitle && newTitle.trim()) { document.getElementById('mainTitle').innerText = newTitle; await saveToFirebase('mainTitle', newTitle); }
             if (newSubtitle && newSubtitle.trim()) { document.getElementById('mainSubtitle').innerText = newSubtitle; await saveToFirebase('mainSubtitle', newSubtitle); }
         }
-
+        
         function showDetailScreen() {
             document.getElementById('mainScreen').style.display = 'none';
             document.getElementById('postsScreen').style.display = 'none';
             document.getElementById('questionsScreen').style.display = 'none';
             document.getElementById('detailScreen').style.display = 'block';
             renderGallery();
-            if (isAdmin) document.querySelectorAll('.delete-img-btn').forEach(btn => btn.style.display = 'block');
+            if (isAdmin) document.querySelectorAll('.delete-media-btn').forEach(btn => btn.style.display = 'block');
         }
-
+        
         function hideDetailScreen() { document.getElementById('detailScreen').style.display = 'none'; document.getElementById('mainScreen').style.display = 'block'; isTextEditingEnabled = false; }
-
+        
         function enableTextEditing() {
             if (!isAdmin) { showPasswordModal('editText'); return; }
             isTextEditingEnabled = true;
@@ -755,7 +1051,7 @@
             div.style.border = "2px solid #ffc107";
             alert('Редактирование текста включено!');
         }
-
+        
         async function saveTextChanges() {
             if (!isTextEditingEnabled) { alert('Сначала включите режим редактирования!'); return; }
             const newText = document.getElementById('descriptionText').innerHTML;
@@ -766,90 +1062,25 @@
             div.style.border = "none";
             isTextEditingEnabled = false;
         }
-
+        
         async function changeTextBgColor() {
             if (!isAdmin) { showPasswordModal('changeColor'); return; }
-            const color = prompt('Введите цвет фона (например: lightblue, #f0f0f0, yellow):', '#f8f9fa');
+            const color = prompt('Введите цвет фона:', '#f8f9fa');
             if (color) { document.getElementById('descriptionText').style.backgroundColor = color; await saveDescriptionBgColorToFirebase(color); }
         }
-
-        function renderGallery() {
-            const gallery = document.getElementById('gallery');
-            if (!gallery) return;
-            gallery.innerHTML = '';
-            if (images.length === 0) { gallery.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">Пока нет изображений. Загрузите первые фото!</div>'; return; }
-            images.forEach((image, index) => {
-                const card = document.createElement('div');
-                card.className = 'image-card';
-                card.onclick = () => openFullscreen(image.url);
-                card.innerHTML = `<img src="${image.url}"><button class="delete-img-btn" onclick="event.stopPropagation(); deleteImage(${index})">🗑️ Удалить</button>`;
-                gallery.appendChild(card);
-            });
-            if (isAdmin) document.querySelectorAll('.delete-img-btn').forEach(btn => btn.style.display = 'block');
-        }
-
-        const galleryImageInput = document.createElement('input');
-        galleryImageInput.type = 'file'; galleryImageInput.accept = 'image/*'; galleryImageInput.multiple = true; galleryImageInput.style.display = 'none';
-        galleryImageInput.onchange = async (event) => {
-            if (!isAdmin) return;
-            const files = Array.from(event.target.files);
-            for (const file of files) {
-                if (file.type.startsWith('image/')) {
-                    const reader = new FileReader();
-                    await new Promise((resolve) => {
-                        reader.onload = async function(e) {
-                            images.push({ url: e.target.result, name: file.name });
-                            await saveImagesToFirebase(images);
-                            renderGallery();
-                            resolve();
-                        };
-                        reader.readAsDataURL(file);
-                    });
-                }
-            }
-            galleryImageInput.value = '';
-            alert('Фото загружены!');
-        };
-        document.body.appendChild(galleryImageInput);
-        function triggerImageUpload() { if (!isAdmin) showPasswordModal('uploadImage'); else galleryImageInput.click(); }
-        async function deleteImage(index) { if (!isAdmin) { showPasswordModal('deleteImage'); return; } images.splice(index, 1); await saveImagesToFirebase(images); renderGallery(); }
-
-        function setupDragAndDrop() {
-            const area = document.getElementById('imageUploadArea');
-            if (!area) return;
-            area.addEventListener('dragover', (e) => { e.preventDefault(); area.style.borderColor = '#667eea'; area.style.backgroundColor = '#f8f9fa'; });
-            area.addEventListener('dragleave', (e) => { e.preventDefault(); area.style.borderColor = '#dee2e6'; area.style.backgroundColor = 'transparent'; });
-            area.addEventListener('drop', async (e) => {
-                e.preventDefault(); area.style.borderColor = '#dee2e6'; area.style.backgroundColor = 'transparent';
-                if (!isAdmin) { showPasswordModal('uploadImage'); return; }
-                const files = Array.from(e.dataTransfer.files);
-                const imageFiles = files.filter(f => f.type.startsWith('image/'));
-                for (const file of imageFiles) {
-                    const reader = new FileReader();
-                    await new Promise((resolve) => {
-                        reader.onload = async function(e) {
-                            images.push({ url: e.target.result, name: file.name });
-                            await saveImagesToFirebase(images);
-                            renderGallery();
-                            resolve();
-                        };
-                        reader.readAsDataURL(file);
-                    });
-                }
-                alert('Фото загружены!');
-            });
-        }
-
+        
         function escapeHtml(text) { const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
-
+        
         async function init() {
             await loadFromFirebase();
             await loadPosts();
             await loadMessages();
-            setupDragAndDrop();
             renderGallery();
         }
-
+        
+        window.toggleTheme = toggleTheme;
+        window.sharePost = sharePost;
+        window.shareQuestion = shareQuestion;
         window.addPostReaction = addPostReaction;
         window.addMessageReaction = addMessageReaction;
         window.checkAdminPassword = checkAdminPassword;
@@ -866,10 +1097,11 @@
         window.enableTextEditing = enableTextEditing;
         window.saveTextChanges = saveTextChanges;
         window.changeTextBgColor = changeTextBgColor;
-        window.deleteImage = deleteImage;
-        window.triggerImageUpload = triggerImageUpload;
-        window.openMainPhotoFullscreen = openMainPhotoFullscreen;
+        window.triggerMediaUpload = triggerMediaUpload;
+        window.openFullscreenImage = openFullscreenImage;
+        window.openFullscreenVideo = openFullscreenVideo;
         window.closeFullscreen = closeFullscreen;
+        window.openMainPhotoFullscreen = () => { const img = document.getElementById('mainPhoto'); if (img.style.display === 'block' && img.src) openFullscreenImage(img.src); };
         window.openAddPostModal = openAddPostModal;
         window.openEditPostModal = openEditPostModal;
         window.deletePost = deletePost;
@@ -882,7 +1114,8 @@
         window.deleteReply = deleteReply;
         window.toggleReplies = toggleReplies;
         window.toggleAdminPanel = toggleAdminPanel;
-
+        window.deleteMedia = deleteMedia;
+        
         init();
     </script>
 </body>
