@@ -37,7 +37,6 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
-        /* Контейнер для всего контента */
         .app-container {
             max-width: 1200px;
             margin: 0 auto;
@@ -134,7 +133,7 @@
             }
         }
 
-        .btn-more, .btn-posts {
+        .btn-more, .btn-posts, .btn-questions {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
@@ -146,7 +145,7 @@
             margin: 10px;
         }
 
-        .btn-more:hover, .btn-posts:hover {
+        .btn-more:hover, .btn-posts:hover, .btn-questions:hover {
             transform: translateY(-2px);
             box-shadow: 0 10px 20px rgba(0,0,0,0.2);
         }
@@ -210,7 +209,17 @@
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
         }
 
-        .posts-header {
+        /* Вопросы */
+        .questions-screen {
+            display: none;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-top: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .questions-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -219,12 +228,139 @@
             gap: 15px;
         }
 
-        .posts-header h2 {
+        .questions-header h2 {
             color: #333;
             font-size: 28px;
         }
 
-        .add-post-btn {
+        /* Форма вопроса */
+        .question-form {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 40px;
+        }
+
+        .question-form h3 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .question-form input, .question-form textarea {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 16px;
+        }
+
+        .question-form textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .question-form button {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        /* Карточка вопроса */
+        .message-card {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+        }
+
+        .message-question {
+            margin-bottom: 15px;
+        }
+
+        .message-name {
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .message-date {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 10px;
+        }
+
+        .message-question-text {
+            color: #333;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: white;
+            border-radius: 10px;
+        }
+
+        .message-answer {
+            background: #e8f5e9;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+
+        .message-answer-label {
+            font-weight: bold;
+            color: #2e7d32;
+            margin-bottom: 8px;
+        }
+
+        .admin-answer-form {
+            margin-top: 15px;
+            display: none;
+        }
+
+        .admin-answer-form textarea {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-family: inherit;
+        }
+
+        .admin-answer-form button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+
+        .delete-message-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 5px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .posts-header, .questions-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .add-post-btn, .admin-questions-btn {
             background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
             color: white;
             border: none;
@@ -234,20 +370,19 @@
             display: none;
         }
 
-        .post-card {
+        .post-card, .message-card {
             background: #f8f9fa;
             border-radius: 15px;
             padding: 20px;
             margin-bottom: 20px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            transition: transform 0.2s;
         }
 
-        .post-card:hover {
+        .post-card:hover, .message-card:hover {
             transform: translateY(-2px);
         }
 
-        .post-date {
+        .post-date, .message-date {
             color: #999;
             font-size: 12px;
             margin-bottom: 10px;
@@ -271,7 +406,7 @@
             margin-top: 15px;
         }
 
-        .post-actions button {
+        .post-actions button, .admin-questions-btn {
             background: #6c757d;
             color: white;
             border: none;
@@ -288,63 +423,6 @@
         .post-actions button.edit-btn {
             background: #ffc107;
             color: #333;
-        }
-
-        /* Модальное окно для постов */
-        .post-modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            justify-content: center;
-            align-items: center;
-            z-index: 3000;
-        }
-
-        .post-modal-content {
-            background: white;
-            padding: 30px;
-            border-radius: 20px;
-            max-width: 500px;
-            width: 90%;
-            max-height: 80vh;
-            overflow-y: auto;
-        }
-
-        .post-modal-content h3 {
-            margin-bottom: 20px;
-        }
-
-        .post-modal-content input,
-        .post-modal-content textarea {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 15px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            font-family: inherit;
-        }
-
-        .post-modal-content textarea {
-            min-height: 150px;
-            resize: vertical;
-        }
-
-        .post-modal-content button {
-            background: #667eea;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            margin-right: 10px;
-        }
-
-        .post-modal-content button.cancel {
-            background: #6c757d;
         }
 
         .detail-content {
@@ -510,6 +588,62 @@
             width: 150px;
         }
 
+        .post-modal, .question-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 3000;
+        }
+
+        .post-modal-content, .question-modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .post-modal-content h3, .question-modal-content h3 {
+            margin-bottom: 20px;
+        }
+
+        .post-modal-content input, .post-modal-content textarea,
+        .question-modal-content input, .question-modal-content textarea {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-family: inherit;
+        }
+
+        .post-modal-content textarea, .question-modal-content textarea {
+            min-height: 150px;
+            resize: vertical;
+        }
+
+        .post-modal-content button, .question-modal-content button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+
+        .post-modal-content button.cancel, .question-modal-content button.cancel {
+            background: #6c757d;
+        }
+
         .fullscreen-modal {
             display: none;
             position: fixed;
@@ -553,7 +687,7 @@
         }
 
         @media (max-width: 768px) {
-            .main-screen, .detail-screen, .posts-screen {
+            .main-screen, .detail-screen, .posts-screen, .questions-screen {
                 margin: 10px;
             }
             .gallery {
@@ -563,7 +697,7 @@
                 width: 150px;
                 height: 150px;
             }
-            .posts-header {
+            .posts-header, .questions-header {
                 flex-direction: column;
                 text-align: center;
             }
@@ -615,6 +749,7 @@
             <div class="business-subtitle" id="mainSubtitle">Загрузка...</div>
             <button class="btn-more" onclick="showDetailScreen()">Узнать больше</button>
             <button class="btn-posts" onclick="showPostsScreen()">📰 Новости и статьи</button>
+            <button class="btn-questions" onclick="showQuestionsScreen()">💬 Задать вопрос</button>
             <br>
             <button class="admin-login-btn" onclick="showPasswordModal('login')">🔑 Вход для администратора</button>
             
@@ -623,7 +758,7 @@
             </div>
         </div>
 
-        <!-- Детальный экран (галерея и описание) -->
+        <!-- Детальный экран -->
         <div id="detailScreen" class="detail-screen">
             <div class="detail-content">
                 <button class="btn-back" onclick="hideDetailScreen()">← Назад</button>
@@ -658,6 +793,27 @@
             </div>
             <div id="postsList"></div>
         </div>
+
+        <!-- Экран вопросов -->
+        <div id="questionsScreen" class="questions-screen">
+            <button class="btn-back" onclick="hideQuestionsScreen()">← Назад</button>
+            <div class="questions-header">
+                <h2>💬 Вопросы и ответы</h2>
+                <button id="adminQuestionsBtn" class="admin-questions-btn" onclick="showAdminMessages()">📋 Управление сообщениями</button>
+            </div>
+            
+            <!-- Форма для отправки вопроса -->
+            <div class="question-form" id="askForm">
+                <h3>📝 Задать вопрос</h3>
+                <input type="text" id="visitorName" placeholder="Ваше имя" maxlength="50">
+                <textarea id="visitorQuestion" placeholder="Ваш вопрос..."></textarea>
+                <button onclick="sendQuestion()">📨 Отправить вопрос</button>
+            </div>
+            
+            <!-- Список вопросов и ответов -->
+            <h3>💬 Вопросы посетителей</h3>
+            <div id="messagesList"></div>
+        </div>
     </div>
 
     <script type="module">
@@ -682,7 +838,172 @@
         let isTextEditingEnabled = false;
         let images = [];
         let posts = [];
+        let messages = [];
         let editingPostId = null;
+        let showAdminMessagesMode = false;
+
+        // ============ ВОПРОСЫ И ОТВЕТЫ ============
+        async function loadMessages() {
+            try {
+                const querySnapshot = await getDocs(collection(db, "messages"));
+                messages = [];
+                querySnapshot.forEach((doc) => {
+                    messages.push({ id: doc.id, ...doc.data() });
+                });
+                messages.sort((a, b) => new Date(b.date) - new Date(a.date));
+                renderMessages();
+            } catch (error) {
+                console.error("Ошибка загрузки сообщений:", error);
+            }
+        }
+
+        function renderMessages() {
+            const container = document.getElementById('messagesList');
+            if (!container) return;
+            
+            let filteredMessages = messages;
+            
+            if (!showAdminMessagesMode) {
+                // В обычном режиме показываем только вопросы с ответами
+                filteredMessages = messages;
+            }
+            
+            if (filteredMessages.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">Пока нет вопросов. Будьте первым!</div>';
+                return;
+            }
+            
+            container.innerHTML = '';
+            filteredMessages.forEach(msg => {
+                const messageCard = document.createElement('div');
+                messageCard.className = 'message-card';
+                messageCard.innerHTML = `
+                    <div class="message-question">
+                        <div class="message-name">👤 ${escapeHtml(msg.name)}</div>
+                        <div class="message-date">📅 ${msg.date}</div>
+                        <div class="message-question-text">❓ ${escapeHtml(msg.question)}</div>
+                        ${msg.answer ? `<div class="message-answer"><div class="message-answer-label">✅ Ответ администратора:</div>${escapeHtml(msg.answer)}</div>` : '<div class="message-answer" style="background:#fff3cd;"><div class="message-answer-label">⏳ Ожидает ответа...</div></div>'}
+                        ${isAdmin && showAdminMessagesMode ? `
+                            <div class="admin-answer-form" id="answer-form-${msg.id}">
+                                <textarea id="answer-text-${msg.id}" placeholder="Введите ответ...">${msg.answer || ''}</textarea>
+                                <button onclick="submitAnswer('${msg.id}')">💾 Ответить</button>
+                                <button class="delete-message-btn" onclick="deleteMessage('${msg.id}')">🗑️ Удалить</button>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+                container.appendChild(messageCard);
+            });
+        }
+
+        async function sendQuestion() {
+            const name = document.getElementById('visitorName').value.trim();
+            const question = document.getElementById('visitorQuestion').value.trim();
+            
+            if (!name || !question) {
+                alert('Заполните имя и вопрос!');
+                return;
+            }
+            
+            const date = new Date().toISOString().split('T')[0];
+            
+            try {
+                await addDoc(collection(db, "messages"), {
+                    name: name,
+                    question: question,
+                    answer: "",
+                    date: date
+                });
+                document.getElementById('visitorName').value = '';
+                document.getElementById('visitorQuestion').value = '';
+                await loadMessages();
+                alert('Вопрос отправлен! Администратор ответит в ближайшее время.');
+            } catch (error) {
+                console.error("Ошибка отправки вопроса:", error);
+                alert('Ошибка отправки вопроса');
+            }
+        }
+
+        async function submitAnswer(messageId) {
+            if (!isAdmin) return;
+            
+            const answerText = document.getElementById(`answer-text-${messageId}`).value.trim();
+            if (!answerText) {
+                alert('Введите ответ!');
+                return;
+            }
+            
+            try {
+                const messageRef = doc(db, "messages", messageId);
+                await updateDoc(messageRef, { answer: answerText });
+                await loadMessages();
+                alert('Ответ сохранён!');
+            } catch (error) {
+                console.error("Ошибка сохранения ответа:", error);
+                alert('Ошибка сохранения ответа');
+            }
+        }
+
+        async function deleteMessage(messageId) {
+            if (!isAdmin) return;
+            
+            if (confirm('Удалить это сообщение?')) {
+                try {
+                    await deleteDoc(doc(db, "messages", messageId));
+                    await loadMessages();
+                    alert('Сообщение удалено!');
+                } catch (error) {
+                    console.error("Ошибка удаления:", error);
+                    alert('Ошибка удаления');
+                }
+            }
+        }
+
+        function showAdminMessages() {
+            if (!isAdmin) {
+                showPasswordModal('adminMessages');
+                return;
+            }
+            showAdminMessagesMode = true;
+            document.getElementById('askForm').style.display = 'none';
+            document.getElementById('adminQuestionsBtn').innerText = '📋 Скрыть управление';
+            renderMessages();
+        }
+
+        function hideAdminMessages() {
+            showAdminMessagesMode = false;
+            document.getElementById('askForm').style.display = 'block';
+            document.getElementById('adminQuestionsBtn').innerText = '📋 Управление сообщениями';
+            renderMessages();
+        }
+
+        function toggleAdminMessages() {
+            if (showAdminMessagesMode) {
+                hideAdminMessages();
+            } else {
+                showAdminMessages();
+            }
+        }
+
+        function showQuestionsScreen() {
+            document.getElementById('mainScreen').style.display = 'none';
+            document.getElementById('detailScreen').style.display = 'none';
+            document.getElementById('postsScreen').style.display = 'none';
+            document.getElementById('questionsScreen').style.display = 'block';
+            loadMessages();
+            showAdminMessagesMode = false;
+            document.getElementById('askForm').style.display = 'block';
+            const adminBtn = document.getElementById('adminQuestionsBtn');
+            if (adminBtn) {
+                adminBtn.style.display = isAdmin ? 'block' : 'none';
+                adminBtn.innerText = '📋 Управление сообщениями';
+            }
+        }
+
+        function hideQuestionsScreen() {
+            document.getElementById('questionsScreen').style.display = 'none';
+            document.getElementById('mainScreen').style.display = 'block';
+        }
 
         // ============ ПОСТЫ ============
         async function loadPosts() {
@@ -692,7 +1013,6 @@
                 querySnapshot.forEach((doc) => {
                     posts.push({ id: doc.id, ...doc.data() });
                 });
-                // Сортировка по дате (новые сверху)
                 posts.sort((a, b) => new Date(b.date) - new Date(a.date));
                 renderPosts();
             } catch (error) {
@@ -744,11 +1064,9 @@
             
             try {
                 if (editingPostId) {
-                    // Обновление существующего поста
                     const postRef = doc(db, "posts", editingPostId);
                     await updateDoc(postRef, { title, content, date });
                 } else {
-                    // Новый пост
                     await addDoc(collection(db, "posts"), { title, content, date });
                 }
                 await loadPosts();
@@ -805,6 +1123,7 @@
         function showPostsScreen() {
             document.getElementById('mainScreen').style.display = 'none';
             document.getElementById('detailScreen').style.display = 'none';
+            document.getElementById('questionsScreen').style.display = 'none';
             document.getElementById('postsScreen').style.display = 'block';
             loadPosts();
             
@@ -819,7 +1138,7 @@
             document.getElementById('mainScreen').style.display = 'block';
         }
 
-        // ============ СОХРАНЕНИЕ В FIRESTORE ============
+        // ============ ОСТАЛЬНЫЕ ФУНКЦИИ ============
         async function saveToFirebase(dataType, value) {
             if (!isAdmin) return;
             try {
@@ -852,7 +1171,6 @@
             }
         }
 
-        // ============ ЗАГРУЗКА ИЗ FIRESTORE ============
         async function loadFromFirebase() {
             try {
                 const docRef = doc(db, "businessData", "main");
@@ -888,7 +1206,6 @@
             }
         }
 
-        // ============ ФУНКЦИИ ДЛЯ ФОТО ============
         function openFullscreen(imageUrl) {
             const modal = document.getElementById('fullscreenModal');
             const img = document.getElementById('fullscreenImage');
@@ -907,7 +1224,6 @@
             }
         }
 
-        // ============ АДМИНИСТРАТОР ============
         function showPasswordModal(action) {
             pendingAction = action;
             document.getElementById('passwordModal').style.display = 'flex';
@@ -935,6 +1251,8 @@
                     setTimeout(() => galleryImageInput.click(), 100);
                 } else if (pendingAction === 'addPost') {
                     openAddPostModal();
+                } else if (pendingAction === 'adminMessages') {
+                    showAdminMessages();
                 }
                 pendingAction = null;
             } else {
@@ -951,18 +1269,17 @@
             document.getElementById('adminPanelDetail').style.display = 'flex';
             document.getElementById('imageUploadArea').style.display = 'block';
             document.getElementById('addPostBtn').style.display = 'block';
+            document.getElementById('adminQuestionsBtn').style.display = 'block';
             
             document.querySelectorAll('.delete-img-btn').forEach(btn => {
                 btn.style.display = 'block';
             });
             
-            // Показать кнопки действий в постах
             document.querySelectorAll('.post-actions').forEach(actions => {
                 actions.style.display = 'flex';
             });
         }
 
-        // ============ ЗАГРУЗКА ФОТО НА ГЛАВНЫЙ ============
         const mainPhotoInput = document.createElement('input');
         mainPhotoInput.type = 'file';
         mainPhotoInput.accept = 'image/*';
@@ -997,7 +1314,6 @@
             mainPhotoInput.click();
         }
 
-        // ============ РЕДАКТИРОВАНИЕ ГЛАВНОГО ЭКРАНА ============
         async function editMainScreenText() {
             if (!isAdmin) {
                 showPasswordModal('editMain');
@@ -1017,10 +1333,10 @@
             }
         }
 
-        // ============ ДЕТАЛЬНЫЙ ЭКРАН ============
         function showDetailScreen() {
             document.getElementById('mainScreen').style.display = 'none';
             document.getElementById('postsScreen').style.display = 'none';
+            document.getElementById('questionsScreen').style.display = 'none';
             document.getElementById('detailScreen').style.display = 'block';
             renderGallery();
             if (isAdmin) {
@@ -1036,7 +1352,6 @@
             isTextEditingEnabled = false;
         }
 
-        // ============ РЕДАКТИРОВАНИЕ ТЕКСТА ============
         function enableTextEditing() {
             if (!isAdmin) {
                 showPasswordModal('editText');
@@ -1080,7 +1395,6 @@
             }
         }
 
-        // ============ ГАЛЕРЕЯ ============
         function renderGallery() {
             const gallery = document.getElementById('gallery');
             if (!gallery) return;
@@ -1157,7 +1471,6 @@
             renderGallery();
         }
 
-        // ============ DRAG & DROP ============
         function setupDragAndDrop() {
             const uploadArea = document.getElementById('imageUploadArea');
             if (!uploadArea) return;
@@ -1203,17 +1516,16 @@
             });
         }
 
-        // ============ ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ============
         function escapeHtml(text) {
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
         }
 
-        // ============ ИНИЦИАЛИЗАЦИЯ ============
         async function init() {
             await loadFromFirebase();
             await loadPosts();
+            await loadMessages();
             setupDragAndDrop();
             renderGallery();
         }
@@ -1227,6 +1539,8 @@
         window.hideDetailScreen = hideDetailScreen;
         window.showPostsScreen = showPostsScreen;
         window.hidePostsScreen = hidePostsScreen;
+        window.showQuestionsScreen = showQuestionsScreen;
+        window.hideQuestionsScreen = hideQuestionsScreen;
         window.enableTextEditing = enableTextEditing;
         window.saveTextChanges = saveTextChanges;
         window.changeTextBgColor = changeTextBgColor;
@@ -1239,6 +1553,11 @@
         window.deletePost = deletePost;
         window.savePost = savePost;
         window.closePostModal = closePostModal;
+        window.sendQuestion = sendQuestion;
+        window.submitAnswer = submitAnswer;
+        window.deleteMessage = deleteMessage;
+        window.showAdminMessages = showAdminMessages;
+        window.toggleAdminMessages = toggleAdminMessages;
         
         init();
     </script>
