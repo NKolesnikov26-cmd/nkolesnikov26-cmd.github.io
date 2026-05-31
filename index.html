@@ -6,7 +6,7 @@
     <title>Бизнес-приложение</title>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
-        import { getFirestore, doc, getDoc, setDoc, collection, getDocs, addDoc, deleteDoc, updateDoc, arrayUnion, arrayRemove, increment } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, collection, getDocs, addDoc, deleteDoc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
         
         const firebaseConfig = {
             apiKey: "AIzaSyAqrvzxSxjGllPGkdzdRfW-I37VjLL7EQs",
@@ -24,7 +24,6 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
-        /* Переменные для светлой и тёмной темы */
         :root {
             --bg-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             --card-bg: #ffffff;
@@ -35,6 +34,7 @@
             --banner-bg: #fff3cd;
             --banner-text: #856404;
             --unread-border: #ffc107;
+            --share-btn-bg: #e9ecef;
         }
         
         body.dark {
@@ -47,6 +47,7 @@
             --banner-bg: #2d2d1c;
             --banner-text: #d4b847;
             --unread-border: #ff9800;
+            --share-btn-bg: #444;
         }
         
         body {
@@ -59,7 +60,6 @@
         
         .app-container { max-width: 1200px; margin: 0 auto; }
         
-        /* Кнопка тёмной темы */
         .theme-toggle {
             position: fixed;
             top: 20px;
@@ -78,23 +78,40 @@
         }
         .theme-toggle:hover { transform: scale(1.05); }
         
-        /* Кнопки шаринга */
-        .share-buttons {
-            display: flex;
-            gap: 10px;
-            margin-top: 10px;
-            flex-wrap: wrap;
-        }
         .share-btn {
-            background: none;
+            background: var(--share-btn-bg);
+            color: var(--text-primary);
             border: none;
-            font-size: 18px;
-            cursor: pointer;
-            padding: 5px 10px;
+            padding: 5px 12px;
             border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
             transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
         }
-        .share-btn:hover { background: var(--hover-bg); transform: scale(1.05); }
+        .share-btn:hover { opacity: 0.8; transform: scale(1.02); }
+        
+        body.dark .share-btn { background: #444; color: #fff; }
+        body.dark .share-btn:hover { background: #555; }
+        
+        body.dark .questions-header h2,
+        body.dark .posts-header h2,
+        body.dark .description-area h3,
+        body.dark .gallery ~ h3,
+        body.dark .question-form h3,
+        body.dark .info-banner,
+        body.dark .reply-text,
+        body.dark .message-question-text,
+        body.dark .post-content,
+        body.dark .post-title,
+        body.dark .reply-author.visitor,
+        body.dark .reply-author.admin { color: #e0e0e0; }
+        
+        body.dark .reply-author.visitor { color: #64b5f6; }
+        body.dark .reply-author.admin { color: #ff9800; }
+        body.dark .reply-item { background: #2a2a3e; }
         
         .main-screen {
             background: var(--card-bg);
@@ -218,11 +235,12 @@
         .detail-content .image-upload { order: 3; }
         .admin-panel-detail { background: var(--hover-bg); padding: 15px; border-radius: 10px; margin-bottom: 25px; display: none; gap: 15px; flex-wrap: wrap; order: 0; }
         .admin-panel-detail button { background: #6c757d; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; }
-        .gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px; }
-        .media-card { background: var(--hover-bg); border-radius: 10px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); position: relative; cursor: pointer; transition: transform 0.2s; }
+        .gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .media-card { background: var(--hover-bg); border-radius: 10px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); position: relative; transition: transform 0.2s; }
         .media-card:hover { transform: scale(1.02); }
         .media-card img, .media-card video { width: 100%; height: 200px; object-fit: cover; }
-        .delete-media-btn { position: absolute; top: 10px; right: 10px; background: #dc3545; color: white; border: none; border-radius: 5px; padding: 5px 10px; cursor: pointer; display: none; z-index: 10; }
+        .media-card .media-buttons { position: absolute; bottom: 10px; left: 10px; right: 10px; display: flex; gap: 10px; z-index: 10; }
+        .media-card .media-buttons button { padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 12px; border: none; }
         .image-upload { text-align: center; padding: 15px; border: 2px dashed var(--border-color); border-radius: 10px; cursor: pointer; margin-bottom: 20px; display: none; }
         .image-upload label { cursor: pointer; display: inline-block; padding: 10px 20px; background: #667eea; color: white; border-radius: 5px; margin-top: 10px; }
         .description-area { margin-top: 20px; width: 100%; }
@@ -251,6 +269,7 @@
             .posts-header, .questions-header { flex-direction: column; text-align: center; }
             .theme-toggle { top: 10px; right: 10px; width: 35px; height: 35px; font-size: 18px; }
             .view-mode-badge { right: 60px; }
+            .media-card .media-buttons { flex-wrap: wrap; }
         }
     </style>
 </head>
@@ -376,7 +395,7 @@
         const ADMIN_NAME = "Кухни Provento";
         let isAdmin = false;
         let isAdminPanelVisible = false;
-        let mediaItems = []; // фото и видео
+        let mediaItems = [];
         let posts = [];
         let messages = [];
         let editingPostId = null;
@@ -386,7 +405,6 @@
         let viewedMessages = JSON.parse(localStorage.getItem('viewedMessages') || '{}');
         if (!currentUserId) { currentUserId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9); localStorage.setItem('userId', currentUserId); }
         
-        // Тёмная тема
         function toggleTheme() {
             document.body.classList.toggle('dark');
             const isDark = document.body.classList.contains('dark');
@@ -398,31 +416,33 @@
             document.getElementById('themeToggle').innerText = '☀️';
         }
         
-        // Шаринг
-        function sharePost(title, url) {
-            const shareUrl = window.location.origin + window.location.pathname + '?post=' + url;
-            const text = `📢 ${title}\n\nПосмотрите!`;
+        function shareMedia(url, type) {
+            const shareUrl = url;
             if (navigator.share) {
-                navigator.share({ title: title, text: text, url: shareUrl });
+                navigator.share({ title: type === 'video' ? 'Видео' : 'Фото', url: shareUrl });
             } else {
-                const vkUrl = `https://vk.com/share.php?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(title)}`;
-                const tgUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(text)}`;
-                const waUrl = `https://wa.me/?text=${encodeURIComponent(text + ' ' + shareUrl)}`;
-                prompt('Скопируйте ссылку:', shareUrl);
+                prompt('Скопируйте ссылку на файл:', shareUrl);
+            }
+        }
+        
+        function sharePost(title, postId) {
+            const shareUrl = window.location.origin + window.location.pathname + '?post=' + postId;
+            if (navigator.share) {
+                navigator.share({ title: title, text: 'Посмотрите!', url: shareUrl });
+            } else {
+                prompt('Скопируйте ссылку на пост:', shareUrl);
             }
         }
         
         function shareQuestion(name, question, id) {
             const shareUrl = window.location.origin + window.location.pathname + '?q=' + id;
-            const text = `💬 Вопрос от ${name}: ${question.substring(0, 100)}...`;
             if (navigator.share) {
-                navigator.share({ title: 'Вопрос', text: text, url: shareUrl });
+                navigator.share({ title: 'Вопрос от ' + name, text: question.substring(0, 100), url: shareUrl });
             } else {
                 prompt('Скопируйте ссылку на вопрос:', shareUrl);
             }
         }
         
-        // Загрузка имени
         let currentVisitorName = localStorage.getItem('visitorName') || '';
         const nameInput = document.getElementById('visitorName');
         if (nameInput) {
@@ -435,7 +455,6 @@
             });
         }
         
-        // Сортировка реакций
         function sortReactionsByCount(reactions) {
             const counts = [
                 { type: 'like', count: reactions.like?.length || 0 },
@@ -446,7 +465,6 @@
             return counts.map(c => c.type);
         }
         
-        // Реакции с анимацией
         async function addPostReaction(postId, reactionType, event) {
             const btn = event.currentTarget;
             btn.classList.add('reaction-animate');
@@ -495,7 +513,6 @@
             }
         }
         
-        // Подсчёт просмотров постов
         async function incrementPostView(postId) {
             if (viewedPosts[postId]) return;
             viewedPosts[postId] = true;
@@ -512,7 +529,6 @@
             await updateDoc(msgRef, { views: increment(1) });
         }
         
-        // Загрузка сообщений
         async function loadMessages() {
             try {
                 const querySnapshot = await getDocs(collection(db, "messages"));
@@ -718,7 +734,6 @@
         
         function hideQuestionsScreen() { document.getElementById('questionsScreen').style.display = 'none'; document.getElementById('mainScreen').style.display = 'block'; }
         
-        // Загрузка постов
         async function loadPosts() {
             try {
                 const querySnapshot = await getDocs(collection(db, "posts"));
@@ -822,7 +837,6 @@
         
         function hidePostsScreen() { document.getElementById('postsScreen').style.display = 'none'; document.getElementById('mainScreen').style.display = 'block'; }
         
-        // Галерея с фото и видео
         async function loadMedia() {
             try {
                 const docRef = doc(db, "businessData", "main");
@@ -854,7 +868,12 @@
                 } else {
                     card.innerHTML = `<img src="${item.url}" onclick="openFullscreenImage('${item.url}')">`;
                 }
-                card.innerHTML += `<button class="delete-media-btn" onclick="event.stopPropagation(); deleteMedia(${index})">🗑️ Удалить</button>`;
+                card.innerHTML += `
+                    <div class="media-buttons">
+                        <button class="share-btn" style="background: #28a745; color: white;" onclick="event.stopPropagation(); shareMedia('${item.url}', '${item.type}')">📤 Поделиться</button>
+                        ${isAdmin ? `<button class="delete-media-btn" style="background: #dc3545; color: white;" onclick="event.stopPropagation(); deleteMedia(${index})">🗑️ Удалить</button>` : ''}
+                    </div>
+                `;
                 gallery.appendChild(card);
             });
             if (isAdmin) document.querySelectorAll('.delete-media-btn').forEach(btn => btn.style.display = 'block');
@@ -935,17 +954,10 @@
         
         function triggerMediaUpload() { if (!isAdmin) showPasswordModal('media'); else mediaInput.click(); }
         
-        // Остальные функции (сохранение в Firebase, загрузка данных, админ и т.д.)
         async function saveToFirebase(dataType, value) {
             if (!isAdmin) return;
             try { const docRef = doc(db, "businessData", "main"); await setDoc(docRef, { [dataType]: value }, { merge: true }); alert("Изменения сохранены!"); }
             catch (error) { console.error("Ошибка сохранения:", error); }
-        }
-        
-        async function saveImagesToFirebase(imagesArray) {
-            if (!isAdmin) return;
-            try { const docRef = doc(db, "businessData", "main"); await setDoc(docRef, { galleryImages: imagesArray }, { merge: true }); }
-            catch (error) { console.error("Ошибка сохранения галереи:", error); }
         }
         
         async function saveDescriptionBgColorToFirebase(color) {
@@ -1069,6 +1081,8 @@
             if (color) { document.getElementById('descriptionText').style.backgroundColor = color; await saveDescriptionBgColorToFirebase(color); }
         }
         
+        function openMainPhotoFullscreen() { const img = document.getElementById('mainPhoto'); if (img.style.display === 'block' && img.src) openFullscreenImage(img.src); }
+        
         function escapeHtml(text) { const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
         
         async function init() {
@@ -1079,6 +1093,7 @@
         }
         
         window.toggleTheme = toggleTheme;
+        window.shareMedia = shareMedia;
         window.sharePost = sharePost;
         window.shareQuestion = shareQuestion;
         window.addPostReaction = addPostReaction;
@@ -1101,7 +1116,7 @@
         window.openFullscreenImage = openFullscreenImage;
         window.openFullscreenVideo = openFullscreenVideo;
         window.closeFullscreen = closeFullscreen;
-        window.openMainPhotoFullscreen = () => { const img = document.getElementById('mainPhoto'); if (img.style.display === 'block' && img.src) openFullscreenImage(img.src); };
+        window.openMainPhotoFullscreen = openMainPhotoFullscreen;
         window.openAddPostModal = openAddPostModal;
         window.openEditPostModal = openEditPostModal;
         window.deletePost = deletePost;
