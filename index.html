@@ -42,9 +42,8 @@
         .posts-screen, .questions-screen { display: none; background: white; border-radius: 20px; padding: 30px; margin-top: 30px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
         .posts-header, .questions-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; flex-wrap: wrap; gap: 15px; }
         .posts-header h2, .questions-header h2 { color: #333; font-size: 28px; }
-        .name-field-wrapper { display: flex; gap: 10px; align-items: center; margin-bottom: 15px; }
-        .name-field-wrapper input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-family: inherit; font-size: 16px; }
-        .name-field-wrapper button { background: #667eea; color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; }
+        .name-field-wrapper { margin-bottom: 15px; }
+        .name-field-wrapper input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-family: inherit; font-size: 16px; }
         .question-form { background: #f8f9fa; padding: 25px; border-radius: 15px; margin-bottom: 20px; }
         .question-form h3 { margin-bottom: 20px; color: #333; }
         .question-form textarea { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 8px; font-family: inherit; font-size: 16px; resize: vertical; min-height: 100px; }
@@ -116,7 +115,7 @@
         .fullscreen-modal .close-fullscreen { position: absolute; top: 20px; right: 40px; color: white; font-size: 40px; cursor: pointer; }
         .view-mode-badge { position: fixed; bottom: 20px; right: 20px; background: rgba(0,0,0,0.7); color: white; padding: 5px 15px; border-radius: 20px; font-size: 12px; z-index: 999; }
         .add-post-btn, .admin-toggle-btn { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; display: none; }
-        @media (max-width: 768px) { .main-screen, .detail-screen, .posts-screen, .questions-screen { margin: 10px; } .gallery { grid-template-columns: 1fr; } .main-photo-container { width: 150px; height: 150px; } .posts-header, .questions-header { flex-direction: column; text-align: center; } .name-field-wrapper { flex-direction: column; } .name-field-wrapper button { width: 100%; } }
+        @media (max-width: 768px) { .main-screen, .detail-screen, .posts-screen, .questions-screen { margin: 10px; } .gallery { grid-template-columns: 1fr; } .main-photo-container { width: 150px; height: 150px; } .posts-header, .questions-header { flex-direction: column; text-align: center; } }
     </style>
 </head>
 <body>
@@ -207,7 +206,6 @@
                 <h3>📝 Задать вопрос</h3>
                 <div class="name-field-wrapper">
                     <input type="text" id="visitorName" placeholder="Ваше имя" maxlength="50">
-                    <button onclick="changeVisitorName()">✏️ Сменить имя</button>
                 </div>
                 <textarea id="visitorQuestion" placeholder="Ваш вопрос..."></textarea>
                 <button onclick="sendQuestion()">📨 Отправить вопрос</button>
@@ -245,21 +243,20 @@
         let messages = [];
         let editingPostId = null;
         let isTextEditingEnabled = false;
-        let currentVisitorName = localStorage.getItem('visitorName') || '';
         let currentUserId = localStorage.getItem('userId');
         if (!currentUserId) { currentUserId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9); localStorage.setItem('userId', currentUserId); }
         
+        // Загрузка и автосохранение имени
+        let currentVisitorName = localStorage.getItem('visitorName') || '';
         const nameInput = document.getElementById('visitorName');
-        if (nameInput) nameInput.value = currentVisitorName;
-
-        function changeVisitorName() {
-            const newName = prompt('Введите ваше имя:', currentVisitorName || 'Посетитель');
-            if (newName && newName.trim()) {
-                currentVisitorName = newName.trim();
-                localStorage.setItem('visitorName', currentVisitorName);
-                if (nameInput) nameInput.value = currentVisitorName;
-                alert(`Имя изменено на "${currentVisitorName}"`);
-            }
+        if (nameInput) {
+            nameInput.value = currentVisitorName;
+            nameInput.addEventListener('input', function() {
+                if (this.value.trim()) {
+                    localStorage.setItem('visitorName', this.value.trim());
+                    currentVisitorName = this.value.trim();
+                }
+            });
         }
 
         function sortReactionsByCount(reactions) {
@@ -853,7 +850,6 @@
             renderGallery();
         }
 
-        window.changeVisitorName = changeVisitorName;
         window.addPostReaction = addPostReaction;
         window.addMessageReaction = addMessageReaction;
         window.checkAdminPassword = checkAdminPassword;
