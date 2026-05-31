@@ -4,6 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Бизнес-приложение</title>
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyAqrvzxSxjGllPGkdzdRfW-I37VjLL7EQs",
+            authDomain: "business-app-ef0c2.firebaseapp.com",
+            projectId: "business-app-ef0c2",
+            storageBucket: "business-app-ef0c2.firebasestorage.app",
+            messagingSenderId: "588727180680",
+            appId: "1:588727180680:web:8ccf0cb06a4901bf236e3d"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        window.db = db;
+        console.log("Firebase подключен!");
+    </script>
     <style>
         * {
             margin: 0;
@@ -465,8 +484,8 @@
             <button class="upload-photo-btn" id="uploadMainPhotoBtn" onclick="event.stopPropagation(); triggerMainPhotoUpload()">+</button>
         </div>
         
-        <h1 class="business-name" id="mainTitle">Название бизнеса</h1>
-        <div class="business-subtitle" id="mainSubtitle">Описание бизнеса</div>
+        <h1 class="business-name" id="mainTitle">Загрузка...</h1>
+        <div class="business-subtitle" id="mainSubtitle">Загрузка...</div>
         <button class="btn-more" onclick="showDetailScreen()">Узнать больше</button>
         <br>
         <button class="admin-login-btn" onclick="showPasswordModal('login')">🔑 Вход для администратора</button>
@@ -497,89 +516,144 @@
             <div class="description-area">
                 <h3>Описание</h3>
                 <div class="description-text" id="descriptionText">
-                    Здесь будет ваше описание. Войдите как администратор, чтобы изменить текст.
+                    Загрузка...
                 </div>
             </div>
         </div>
     </div>
 
-    <script>
+    <script type="module">
+        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyAqrvzxSxjGllPGkdzdRfW-I37VjLL7EQs",
+            authDomain: "business-app-ef0c2.firebaseapp.com",
+            projectId: "business-app-ef0c2",
+            storageBucket: "business-app-ef0c2.firebasestorage.app",
+            messagingSenderId: "588727180680",
+            appId: "1:588727180680:web:8ccf0cb06a4901bf236e3d"
+        };
+        
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        
         const ADMIN_PASSWORD = "467211";
-        let isAdmin = localStorage.getItem('isAdmin') === 'true';
+        let isAdmin = false;
         let pendingAction = null;
         let isTextEditingEnabled = false;
-        let images = JSON.parse(localStorage.getItem('businessImages')) || [];
-
-        // Создаем скрытые input'ы для загрузки файлов
-        const mainPhotoInput = document.createElement('input');
-        mainPhotoInput.type = 'file';
-        mainPhotoInput.id = 'mainPhotoInput';
-        mainPhotoInput.accept = 'image/*';
-        mainPhotoInput.style.display = 'none';
-        mainPhotoInput.onchange = uploadMainPhoto;
-        document.body.appendChild(mainPhotoInput);
-
-        const galleryImageInput = document.createElement('input');
-        galleryImageInput.type = 'file';
-        galleryImageInput.id = 'galleryImageInput';
-        galleryImageInput.accept = 'image/*';
-        galleryImageInput.multiple = true;
-        galleryImageInput.style.display = 'none';
-        galleryImageInput.onchange = handleImageUpload;
-        document.body.appendChild(galleryImageInput);
-
-        // Функции для вызова загрузки файлов
-        function triggerMainPhotoUpload() {
-            if (!isAdmin) {
-                showPasswordModal('photo');
-                return;
+        let images = [];
+        
+        // ============ СОХРАНЕНИЕ В FIRESTORE ============
+        async function saveToFirebase(dataType, value) {
+            if (!isAdmin) return;
+            try {
+                const docRef = doc(db, "businessData", "main");
+                await setDoc(docRef, { [dataType]: value }, { merge: true });
+                console.log(`Сохранено в Firebase: ${dataType}`);
+                alert("Изменения сохранены и видны всем!");
+            } catch (error) {
+                console.error("Ошибка сохранения:", error);
+                alert("Ошибка сохранения. Проверьте интернет и правила Firebase.");
             }
-            mainPhotoInput.click();
         }
-
-        function triggerImageUpload() {
-            if (!isAdmin) {
-                showPasswordModal('uploadImage');
-                return;
+        
+        async function saveImagesToFirebase(imagesArray) {
+            if (!isAdmin) return;
+            try {
+                const docRef = doc(db, "businessData", "main");
+                await setDoc(docRef, { galleryImages: imagesArray }, { merge: true });
+                console.log("Галерея сохранена в Firebase");
+            } catch (error) {
+                console.error("Ошибка сохранения галереи:", error);
             }
-            galleryImageInput.click();
         }
-
+        
+        async function saveDescriptionBgColorToFirebase(color) {
+            if (!isAdmin) return;
+            try {
+                const docRef = doc(db, "businessData", "main");
+                await setDoc(docRef, { descriptionBgColor: color }, { merge: true });
+                console.log("Цвет фона сохранён в Firebase");
+            } catch (error) {
+                console.error("Ошибка сохранения цвета фона:", error);
+            }
+        }
+        
+        // ============ ЗАГРУЗКА ИЗ FIRESTORE ============
+        async function loadFromFirebase() {
+            try {
+                const docRef = doc(db, "businessData", "main");
+                const docSnap = await getDoc(docRef);
+                
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    
+                    if (data.mainTitle) document.getElementById('mainTitle').innerText = data.mainTitle;
+                    if (data.mainSubtitle) document.getElementById('mainSubtitle').innerText = data.mainSubtitle;
+                    
+                    if (data.mainPhoto) {
+                        const img = document.getElementById('mainPhoto');
+                        const placeholder = document.getElementById('photoPlaceholder');
+                        img.src = data.mainPhoto;
+                        img.style.display = 'block';
+                        placeholder.style.display = 'none';
+                    }
+                    
+                    if (data.businessDescription) document.getElementById('descriptionText').innerHTML = data.businessDescription;
+                    if (data.descriptionBgColor) document.getElementById('descriptionText').style.backgroundColor = data.descriptionBgColor;
+                    
+                    if (data.galleryImages && Array.isArray(data.galleryImages)) {
+                        images = data.galleryImages;
+                        renderGallery();
+                    }
+                } else {
+                    console.log("Нет данных в Firebase, используются значения по умолчанию");
+                    document.getElementById('mainTitle').innerText = "Название бизнеса";
+                    document.getElementById('mainSubtitle').innerText = "Описание бизнеса";
+                    document.getElementById('descriptionText').innerHTML = "Здесь будет ваше описание. Войдите как администратор, чтобы изменить текст.";
+                }
+            } catch (error) {
+                console.error("Ошибка загрузки из Firebase:", error);
+            }
+        }
+        
+        // ============ ФУНКЦИИ ДЛЯ ФОТО ============
         function openFullscreen(imageUrl) {
             const modal = document.getElementById('fullscreenModal');
             const img = document.getElementById('fullscreenImage');
             img.src = imageUrl;
             modal.style.display = 'flex';
         }
-
+        
         function closeFullscreen() {
             document.getElementById('fullscreenModal').style.display = 'none';
         }
-
+        
         function openMainPhotoFullscreen() {
             const img = document.getElementById('mainPhoto');
             if (img.style.display === 'block' && img.src && img.src !== '') {
                 openFullscreen(img.src);
             }
         }
-
+        
+        // ============ АДМИНИСТРАТОР ============
         function showPasswordModal(action) {
             pendingAction = action;
             document.getElementById('passwordModal').style.display = 'flex';
             document.getElementById('adminPasswordInput').value = '';
         }
-
+        
         function closePasswordModal() {
             document.getElementById('passwordModal').style.display = 'none';
             pendingAction = null;
         }
-
-        function checkAdminPassword() {
+        
+        async function checkAdminPassword() {
             const password = document.getElementById('adminPasswordInput').value;
             
             if (password === ADMIN_PASSWORD) {
                 isAdmin = true;
-                localStorage.setItem('isAdmin', 'true');
                 closePasswordModal();
                 enableAdminMode();
                 
@@ -596,7 +670,7 @@
                 document.getElementById('adminPasswordInput').value = '';
             }
         }
-
+        
         function enableAdminMode() {
             document.getElementById('modeBadge').innerHTML = '👑 Режим администратора';
             document.getElementById('modeBadge').style.background = 'rgba(40,167,69,0.9)';
@@ -609,41 +683,44 @@
                 btn.style.display = 'block';
             });
         }
-
-        function uploadMainPhoto(event) {
+        
+        // ============ ЗАГРУЗКА ФОТО НА ГЛАВНЫЙ ============
+        const mainPhotoInput = document.createElement('input');
+        mainPhotoInput.type = 'file';
+        mainPhotoInput.accept = 'image/*';
+        mainPhotoInput.style.display = 'none';
+        mainPhotoInput.onchange = async (event) => {
             const file = event.target.files[0];
             if (!file) return;
             
             if (file.type.startsWith('image/')) {
                 const reader = new FileReader();
-                reader.onload = function(e) {
+                reader.onload = async function(e) {
                     const img = document.getElementById('mainPhoto');
                     const placeholder = document.getElementById('photoPlaceholder');
                     img.src = e.target.result;
                     img.style.display = 'block';
                     placeholder.style.display = 'none';
-                    localStorage.setItem('mainPhoto', e.target.result);
-                    alert('Фото успешно обновлено!');
+                    await saveToFirebase('mainPhoto', e.target.result);
                 };
                 reader.readAsDataURL(file);
             } else {
                 alert('Пожалуйста, загружайте изображения!');
             }
             mainPhotoInput.value = '';
-        }
-
-        function loadMainPhoto() {
-            const savedPhoto = localStorage.getItem('mainPhoto');
-            if (savedPhoto && savedPhoto !== '') {
-                const img = document.getElementById('mainPhoto');
-                const placeholder = document.getElementById('photoPlaceholder');
-                img.src = savedPhoto;
-                img.style.display = 'block';
-                placeholder.style.display = 'none';
+        };
+        document.body.appendChild(mainPhotoInput);
+        
+        function triggerMainPhotoUpload() {
+            if (!isAdmin) {
+                showPasswordModal('photo');
+                return;
             }
+            mainPhotoInput.click();
         }
-
-        function editMainScreenText() {
+        
+        // ============ РЕДАКТИРОВАНИЕ ГЛАВНОГО ЭКРАНА ============
+        async function editMainScreenText() {
             if (!isAdmin) {
                 showPasswordModal('editMain');
                 return;
@@ -654,43 +731,33 @@
             
             if (newTitle && newTitle.trim() !== '') {
                 document.getElementById('mainTitle').innerText = newTitle;
-                localStorage.setItem('mainTitle', newTitle);
+                await saveToFirebase('mainTitle', newTitle);
             }
             if (newSubtitle && newSubtitle.trim() !== '') {
                 document.getElementById('mainSubtitle').innerText = newSubtitle;
-                localStorage.setItem('mainSubtitle', newSubtitle);
-            }
-            alert('Название и описание успешно изменены!');
-        }
-
-        function loadMainScreenText() {
-            if (localStorage.getItem('mainTitle')) {
-                document.getElementById('mainTitle').innerText = localStorage.getItem('mainTitle');
-            }
-            if (localStorage.getItem('mainSubtitle')) {
-                document.getElementById('mainSubtitle').innerText = localStorage.getItem('mainSubtitle');
+                await saveToFirebase('mainSubtitle', newSubtitle);
             }
         }
-
+        
+        // ============ ДЕТАЛЬНЫЙ ЭКРАН ============
         function showDetailScreen() {
             document.getElementById('mainScreen').style.display = 'none';
             document.getElementById('detailScreen').style.display = 'block';
             renderGallery();
-            loadSavedDescription();
-            loadSavedBgColor();
             if (isAdmin) {
                 document.querySelectorAll('.delete-img-btn').forEach(btn => {
                     btn.style.display = 'block';
                 });
             }
         }
-
+        
         function hideDetailScreen() {
             document.getElementById('mainScreen').style.display = 'flex';
             document.getElementById('detailScreen').style.display = 'none';
             isTextEditingEnabled = false;
         }
-
+        
+        // ============ РЕДАКТИРОВАНИЕ ТЕКСТА ============
         function enableTextEditing() {
             if (!isAdmin) {
                 showPasswordModal('editText');
@@ -704,25 +771,24 @@
             descriptionDiv.style.border = "2px solid #ffc107";
             alert('Редактирование текста включено!');
         }
-
-        function saveTextChanges() {
+        
+        async function saveTextChanges() {
             if (!isTextEditingEnabled) {
                 alert('Сначала включите режим редактирования!');
                 return;
             }
             
             const newText = document.getElementById('descriptionText').innerHTML;
-            localStorage.setItem('businessDescription', newText);
+            await saveToFirebase('businessDescription', newText);
             
             const descriptionDiv = document.getElementById('descriptionText');
             descriptionDiv.contentEditable = "false";
             descriptionDiv.style.backgroundColor = "";
             descriptionDiv.style.border = "none";
             isTextEditingEnabled = false;
-            alert('Текст сохранен!');
         }
-
-        function changeTextBgColor() {
+        
+        async function changeTextBgColor() {
             if (!isAdmin) {
                 showPasswordModal('changeColor');
                 return;
@@ -731,24 +797,11 @@
             const color = prompt('Введите цвет фона (на английском или HEX, например: #f0f0f0, lightblue, yellow):', '#f8f9fa');
             if (color) {
                 document.getElementById('descriptionText').style.backgroundColor = color;
-                localStorage.setItem('descriptionBgColor', color);
+                await saveDescriptionBgColorToFirebase(color);
             }
         }
-
-        function loadSavedDescription() {
-            const savedDescription = localStorage.getItem('businessDescription');
-            if (savedDescription) {
-                document.getElementById('descriptionText').innerHTML = savedDescription;
-            }
-        }
-
-        function loadSavedBgColor() {
-            const savedColor = localStorage.getItem('descriptionBgColor');
-            if (savedColor) {
-                document.getElementById('descriptionText').style.backgroundColor = savedColor;
-            }
-        }
-
+        
+        // ============ ГАЛЕРЕЯ ============
         function renderGallery() {
             const gallery = document.getElementById('gallery');
             gallery.innerHTML = '';
@@ -775,40 +828,56 @@
                 });
             }
         }
-
-        function handleImageUpload(event) {
-            const files = Array.from(event.target.files);
+        
+        const galleryImageInput = document.createElement('input');
+        galleryImageInput.type = 'file';
+        galleryImageInput.accept = 'image/*';
+        galleryImageInput.multiple = true;
+        galleryImageInput.style.display = 'none';
+        galleryImageInput.onchange = async (event) => {
+            if (!isAdmin) return;
             
-            files.forEach(file => {
+            const files = Array.from(event.target.files);
+            for (const file of files) {
                 if (file.type.startsWith('image/')) {
                     const reader = new FileReader();
-                    reader.onload = function(e) {
-                        images.push({ url: e.target.result, name: file.name });
-                        saveImages();
-                        renderGallery();
-                    };
-                    reader.readAsDataURL(file);
+                    await new Promise((resolve) => {
+                        reader.onload = async function(e) {
+                            images.push({ url: e.target.result, name: file.name });
+                            await saveImagesToFirebase(images);
+                            renderGallery();
+                            resolve();
+                        };
+                        reader.readAsDataURL(file);
+                    });
                 } else {
                     alert('Пожалуйста, загружайте только изображения!');
                 }
-            });
+            }
             galleryImageInput.value = '';
+            alert('Фото загружены и сохранены для всех!');
+        };
+        document.body.appendChild(galleryImageInput);
+        
+        function triggerImageUpload() {
+            if (!isAdmin) {
+                showPasswordModal('uploadImage');
+                return;
+            }
+            galleryImageInput.click();
         }
-
-        function deleteImage(index) {
+        
+        async function deleteImage(index) {
             if (!isAdmin) {
                 showPasswordModal('deleteImage');
                 return;
             }
             images.splice(index, 1);
-            saveImages();
+            await saveImagesToFirebase(images);
             renderGallery();
         }
-
-        function saveImages() {
-            localStorage.setItem('businessImages', JSON.stringify(images));
-        }
-
+        
+        // ============ DRAG & DROP ============
         function setupDragAndDrop() {
             const uploadArea = document.getElementById('imageUploadArea');
             if (!uploadArea) return;
@@ -825,7 +894,7 @@
                 uploadArea.style.backgroundColor = 'transparent';
             });
             
-            uploadArea.addEventListener('drop', (e) => {
+            uploadArea.addEventListener('drop', async (e) => {
                 e.preventDefault();
                 uploadArea.style.borderColor = '#dee2e6';
                 uploadArea.style.backgroundColor = 'transparent';
@@ -838,33 +907,45 @@
                 const files = Array.from(e.dataTransfer.files);
                 const imageFiles = files.filter(file => file.type.startsWith('image/'));
                 
-                imageFiles.forEach(file => {
+                for (const file of imageFiles) {
                     const reader = new FileReader();
-                    reader.onload = function(e) {
-                        images.push({ url: e.target.result, name: file.name });
-                        saveImages();
-                        renderGallery();
-                    };
-                    reader.readAsDataURL(file);
-                });
+                    await new Promise((resolve) => {
+                        reader.onload = async function(e) {
+                            images.push({ url: e.target.result, name: file.name });
+                            await saveImagesToFirebase(images);
+                            renderGallery();
+                            resolve();
+                        };
+                        reader.readAsDataURL(file);
+                    });
+                }
+                alert('Фото загружены и сохранены для всех!');
             });
         }
-
-        function restoreAdminSession() {
-            if (isAdmin) {
-                enableAdminMode();
-            }
-        }
-
-        function init() {
-            loadMainPhoto();
-            loadMainScreenText();
-            restoreAdminSession();
+        
+        // ============ ИНИЦИАЛИЗАЦИЯ ============
+        async function init() {
+            await loadFromFirebase();
             setupDragAndDrop();
             renderGallery();
         }
         
-        window.onload = init;
+        window.showPasswordModal = showPasswordModal;
+        window.checkAdminPassword = checkAdminPassword;
+        window.closePasswordModal = closePasswordModal;
+        window.triggerMainPhotoUpload = triggerMainPhotoUpload;
+        window.editMainScreenText = editMainScreenText;
+        window.showDetailScreen = showDetailScreen;
+        window.hideDetailScreen = hideDetailScreen;
+        window.enableTextEditing = enableTextEditing;
+        window.saveTextChanges = saveTextChanges;
+        window.changeTextBgColor = changeTextBgColor;
+        window.deleteImage = deleteImage;
+        window.triggerImageUpload = triggerImageUpload;
+        window.openMainPhotoFullscreen = openMainPhotoFullscreen;
+        window.closeFullscreen = closeFullscreen;
+        
+        init();
     </script>
 </body>
 </html>
