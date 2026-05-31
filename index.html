@@ -51,21 +51,21 @@
         .message-name { font-weight: bold; color: #667eea; margin-bottom: 5px; }
         .message-date { font-size: 12px; color: #999; margin-bottom: 10px; }
         .message-question-text { color: #333; margin-bottom: 15px; padding: 10px; background: white; border-radius: 10px; }
-        .reply-thread { margin-top: 15px; margin-left: 20px; }
+        .reply-thread { margin-top: 15px; }
+        .reply-thread.collapsed { display: none; }
         .reply-item { background: #f1f8e9; border-radius: 12px; padding: 12px; margin-bottom: 10px; border-left: 3px solid #4caf50; }
         .reply-author { font-weight: bold; font-size: 13px; margin-bottom: 5px; }
         .reply-author.admin { color: #e65100; }
         .reply-author.visitor { color: #1565c0; }
         .reply-text { color: #333; margin-bottom: 8px; }
         .reply-date { font-size: 11px; color: #999; margin-bottom: 8px; }
-        .reply-actions { display: flex; gap: 10px; margin-top: 5px; }
+        .reply-actions { display: flex; gap: 10px; margin-top: 5px; flex-wrap: wrap; }
         .reply-actions button { background: none; border: none; font-size: 12px; cursor: pointer; padding: 4px 8px; border-radius: 5px; }
         .reply-actions .reply-to-reply-btn { background: #17a2b8; color: white; }
         .reply-actions .delete-reply-btn { background: #dc3545; color: white; }
+        .toggle-replies-btn { background: #6c757d; color: white; border: none; padding: 5px 12px; border-radius: 5px; cursor: pointer; font-size: 12px; margin-bottom: 10px; }
         .admin-buttons { margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap; }
         .admin-buttons button { padding: 8px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; }
-        .admin-buttons .reply-btn { background: #667eea; color: white; }
-        .admin-buttons .edit-reply-btn { background: #ffc107; color: #333; }
         .admin-buttons .delete-btn { background: #dc3545; color: white; }
         .reactions { display: flex; gap: 15px; margin-top: 15px; padding-top: 10px; border-top: 1px solid #ddd; }
         .reaction-btn { background: none; border: none; font-size: 20px; cursor: pointer; padding: 5px 10px; border-radius: 20px; transition: all 0.2s; }
@@ -226,6 +226,7 @@
         const db = getFirestore(app);
         
         const ADMIN_PASSWORD = "467211";
+        const ADMIN_NAME = "Кухни Provento";
         let isAdmin = false;
         let isAdminPanelVisible = false;
         let images = [];
@@ -233,15 +234,28 @@
         let messages = [];
         let editingPostId = null;
         let isTextEditingEnabled = false;
+        let currentVisitorName = localStorage.getItem('visitorName') || '';
         let currentUserId = localStorage.getItem('userId');
         if (!currentUserId) { currentUserId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9); localStorage.setItem('userId', currentUserId); }
+        
+        document.getElementById('visitorName').value = currentVisitorName;
 
-        // ============ РЕАКЦИИ С СОХРАНЕНИЕМ ПОРЯДКА ============
+        // ============ СОРТИРОВКА РЕАКЦИЙ ПО КОЛИЧЕСТВУ ============
+        function sortReactionsByCount(reactions) {
+            const counts = [
+                { type: 'like', count: reactions.like?.length || 0 },
+                { type: 'heart', count: reactions.heart?.length || 0 },
+                { type: 'angry', count: reactions.angry?.length || 0 }
+            ];
+            counts.sort((a, b) => b.count - a.count);
+            return counts.map(c => c.type);
+        }
+
         async function addPostReaction(postId, reactionType, event) {
             const postRef = doc(db, "posts", postId);
             const postDoc = await getDoc(postRef);
             if (postDoc.exists()) {
-                let reactions = postDoc.data().reactions || { like: [], heart: [], angry: [], order: ['like', 'heart', 'angry'] };
+                let reactions = postDoc.data().reactions || { like: [], heart: [], angry: [] };
                 const userReactions = [];
                 if (reactions.like.includes(currentUserId)) userReactions.push('like');
                 if (reactions.heart.includes(currentUserId)) userReactions.push('heart');
@@ -249,18 +263,14 @@
                 
                 if (userReactions.includes(reactionType)) {
                     reactions[reactionType] = reactions[reactionType].filter(id => id !== currentUserId);
-                    const orderIndex = reactions.order.indexOf(reactionType);
-                    if (orderIndex !== -1) reactions.order.splice(orderIndex, 1);
                 } else {
                     for (const ur of userReactions) {
                         reactions[ur] = reactions[ur].filter(id => id !== currentUserId);
-                        const orderIndex = reactions.order.indexOf(ur);
-                        if (orderIndex !== -1) reactions.order.splice(orderIndex, 1);
                     }
                     reactions[reactionType].push(currentUserId);
-                    reactions.order.unshift(reactionType);
                 }
-                await updateDoc(postRef, { reactions });
+                const sortedOrder = sortReactionsByCount(reactions);
+                await updateDoc(postRef, { reactions, reactionOrder: sortedOrder });
                 await loadPosts();
             }
         }
@@ -269,7 +279,7 @@
             const msgRef = doc(db, "messages", messageId);
             const msgDoc = await getDoc(msgRef);
             if (msgDoc.exists()) {
-                let reactions = msgDoc.data().reactions || { like: [], heart: [], angry: [], order: ['like', 'heart', 'angry'] };
+                let reactions = msgDoc.data().reactions || { like: [], heart: [], angry: [] };
                 const userReactions = [];
                 if (reactions.like.includes(currentUserId)) userReactions.push('like');
                 if (reactions.heart.includes(currentUserId)) userReactions.push('heart');
@@ -277,18 +287,14 @@
                 
                 if (userReactions.includes(reactionType)) {
                     reactions[reactionType] = reactions[reactionType].filter(id => id !== currentUserId);
-                    const orderIndex = reactions.order.indexOf(reactionType);
-                    if (orderIndex !== -1) reactions.order.splice(orderIndex, 1);
                 } else {
                     for (const ur of userReactions) {
                         reactions[ur] = reactions[ur].filter(id => id !== currentUserId);
-                        const orderIndex = reactions.order.indexOf(ur);
-                        if (orderIndex !== -1) reactions.order.splice(orderIndex, 1);
                     }
                     reactions[reactionType].push(currentUserId);
-                    reactions.order.unshift(reactionType);
                 }
-                await updateDoc(msgRef, { reactions });
+                const sortedOrder = sortReactionsByCount(reactions);
+                await updateDoc(msgRef, { reactions, reactionOrder: sortedOrder });
                 await loadMessages();
             }
         }
@@ -299,31 +305,31 @@
                 const querySnapshot = await getDocs(collection(db, "messages"));
                 messages = [];
                 querySnapshot.forEach((doc) => {
-                    messages.push({ id: doc.id, ...doc.data(), reactions: doc.data().reactions || { like: [], heart: [], angry: [], order: ['like', 'heart', 'angry'] } });
+                    messages.push({ id: doc.id, ...doc.data(), reactions: doc.data().reactions || { like: [], heart: [], angry: [] }, reactionOrder: doc.data().reactionOrder || ['like', 'heart', 'angry'] });
                 });
                 messages.sort((a, b) => new Date(b.date) - new Date(a.date));
                 renderMessages();
             } catch (error) { console.error("Ошибка загрузки сообщений:", error); }
         }
 
-        function renderReplyTree(replies, parentId = null, level = 0) {
+        function renderReplyTree(replies, parentId = null, level = 0, collapsed = false) {
             const threadReplies = replies.filter(r => r.parentId === parentId);
             if (threadReplies.length === 0) return '';
             
-            let html = '<div class="reply-thread" style="margin-left: ' + Math.min(level * 20, 60) + 'px;">';
+            let html = '<div class="reply-thread' + (collapsed ? ' collapsed' : '') + '">';
             for (const reply of threadReplies) {
                 const authorClass = reply.isAdmin ? 'admin' : 'visitor';
-                const authorName = reply.isAdmin ? '👑 Администратор' : '💬 ' + escapeHtml(reply.authorName);
+                const authorName = reply.isAdmin ? ADMIN_NAME : (reply.authorName || 'Посетитель');
                 html += `
                     <div class="reply-item" data-reply-id="${reply.id}">
-                        <div class="reply-author ${authorClass}">${authorName}</div>
+                        <div class="reply-author ${authorClass}">${escapeHtml(authorName)}</div>
                         <div class="reply-text">${escapeHtml(reply.text)}</div>
                         <div class="reply-date">📅 ${reply.date}</div>
                         <div class="reply-actions">
                             <button class="reply-to-reply-btn" onclick="showReplyToReplyPrompt('${reply.id}', '${reply.messageId}')">💬 Ответить</button>
                             ${(isAdmin || reply.authorId === currentUserId) ? `<button class="delete-reply-btn" onclick="deleteReply('${reply.id}', '${reply.messageId}')">🗑️ Удалить</button>` : ''}
                         </div>
-                        ${renderReplyTree(replies, reply.id, level + 1)}
+                        ${renderReplyTree(replies, reply.id, level + 1, collapsed)}
                     </div>
                 `;
             }
@@ -338,17 +344,14 @@
             container.innerHTML = '';
             
             for (const msg of messages) {
-                const reactions = msg.reactions || { like: [], heart: [], angry: [], order: ['like', 'heart', 'angry'] };
+                const reactions = msg.reactions || { like: [], heart: [], angry: [] };
                 const likeCount = reactions.like.length;
                 const heartCount = reactions.heart.length;
                 const angryCount = reactions.angry.length;
                 const userLiked = reactions.like.includes(currentUserId);
                 const userHearted = reactions.heart.includes(currentUserId);
                 const userAngry = reactions.angry.includes(currentUserId);
-                const reactionOrder = reactions.order || ['like', 'heart', 'angry'];
-                
-                const messageCard = document.createElement('div');
-                messageCard.className = 'message-card';
+                const reactionOrder = msg.reactionOrder || sortReactionsByCount(reactions);
                 
                 let reactionsHtml = '<div class="reactions">';
                 for (const rt of reactionOrder) {
@@ -359,10 +362,17 @@
                 reactionsHtml += '</div>';
                 
                 let replyTreeHtml = '';
-                if (msg.replies && msg.replies.length > 0) {
-                    replyTreeHtml = renderReplyTree(msg.replies);
+                const hasReplies = msg.replies && msg.replies.length > 0;
+                if (hasReplies) {
+                    const collapsedState = localStorage.getItem(`collapsed_${msg.id}`) === 'true';
+                    replyTreeHtml = `
+                        <button class="toggle-replies-btn" onclick="toggleReplies('${msg.id}')">${collapsedState ? '📂 Показать ответы' : '📁 Свернуть ответы'}</button>
+                        ${renderReplyTree(msg.replies, null, 0, collapsedState)}
+                    `;
                 }
                 
+                const messageCard = document.createElement('div');
+                messageCard.className = 'message-card';
                 messageCard.innerHTML = `
                     <div class="message-name">👤 ${escapeHtml(msg.name)}</div>
                     <div class="message-date">📅 ${msg.date}</div>
@@ -382,7 +392,18 @@
             }
         }
 
+        function toggleReplies(messageId) {
+            const current = localStorage.getItem(`collapsed_${messageId}`) === 'true';
+            localStorage.setItem(`collapsed_${messageId}`, (!current).toString());
+            renderMessages();
+        }
+
         async function showReplyToQuestionPrompt(messageId) {
+            const visitorName = document.getElementById('visitorName').value.trim();
+            if (!visitorName && !isAdmin) {
+                alert('Введите ваше имя в поле выше!');
+                return;
+            }
             const text = prompt('Ваш ответ на вопрос:');
             if (text && text.trim()) {
                 const date = new Date().toISOString().split('T')[0];
@@ -391,7 +412,7 @@
                     messageId: messageId,
                     parentId: null,
                     text: text.trim(),
-                    authorName: isAdmin ? 'Администратор' : (document.getElementById('visitorName')?.value.trim() || 'Посетитель'),
+                    authorName: isAdmin ? ADMIN_NAME : visitorName,
                     authorId: currentUserId,
                     isAdmin: isAdmin,
                     date: date
@@ -408,6 +429,11 @@
         }
 
         async function showReplyToReplyPrompt(replyId, messageId) {
+            const visitorName = document.getElementById('visitorName').value.trim();
+            if (!visitorName && !isAdmin) {
+                alert('Введите ваше имя в поле выше!');
+                return;
+            }
             const text = prompt('Ваш ответ:');
             if (text && text.trim()) {
                 const date = new Date().toISOString().split('T')[0];
@@ -416,7 +442,7 @@
                     messageId: messageId,
                     parentId: replyId,
                     text: text.trim(),
-                    authorName: isAdmin ? 'Администратор' : (document.getElementById('visitorName')?.value.trim() || 'Посетитель'),
+                    authorName: isAdmin ? ADMIN_NAME : visitorName,
                     authorId: currentUserId,
                     isAdmin: isAdmin,
                     date: date
@@ -466,10 +492,13 @@
             const name = document.getElementById('visitorName').value.trim();
             const question = document.getElementById('visitorQuestion').value.trim();
             if (!name || !question) { alert('Заполните имя и вопрос!'); return; }
+            localStorage.setItem('visitorName', name);
+            currentVisitorName = name;
             const date = new Date().toISOString().split('T')[0];
             try {
-                await addDoc(collection(db, "messages"), { name, question, date, replies: [], reactions: { like: [], heart: [], angry: [], order: ['like', 'heart', 'angry'] } });
-                document.getElementById('visitorName').value = ''; document.getElementById('visitorQuestion').value = '';
+                await addDoc(collection(db, "messages"), { name, question, date, replies: [], reactions: { like: [], heart: [], angry: [] }, reactionOrder: ['like', 'heart', 'angry'] });
+                document.getElementById('visitorName').value = name;
+                document.getElementById('visitorQuestion').value = '';
                 await loadMessages();
                 alert('Вопрос отправлен!');
             } catch (error) { console.error("Ошибка отправки вопроса:", error); alert('Ошибка отправки вопроса'); }
@@ -493,7 +522,7 @@
             try {
                 const querySnapshot = await getDocs(collection(db, "posts"));
                 posts = [];
-                querySnapshot.forEach((doc) => { posts.push({ id: doc.id, ...doc.data(), reactions: doc.data().reactions || { like: [], heart: [], angry: [], order: ['like', 'heart', 'angry'] } }); });
+                querySnapshot.forEach((doc) => { posts.push({ id: doc.id, ...doc.data(), reactions: doc.data().reactions || { like: [], heart: [], angry: [] }, reactionOrder: doc.data().reactionOrder || ['like', 'heart', 'angry'] }); });
                 posts.sort((a, b) => new Date(b.date) - new Date(a.date));
                 renderPosts();
             } catch (error) { console.error("Ошибка загрузки постов:", error); }
@@ -505,14 +534,14 @@
             if (posts.length === 0) { container.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">Пока нет постов. Добавьте первый!</div>'; return; }
             container.innerHTML = '';
             for (const post of posts) {
-                const reactions = post.reactions || { like: [], heart: [], angry: [], order: ['like', 'heart', 'angry'] };
+                const reactions = post.reactions || { like: [], heart: [], angry: [] };
                 const likeCount = reactions.like.length;
                 const heartCount = reactions.heart.length;
                 const angryCount = reactions.angry.length;
                 const userLiked = reactions.like.includes(currentUserId);
                 const userHearted = reactions.heart.includes(currentUserId);
                 const userAngry = reactions.angry.includes(currentUserId);
-                const reactionOrder = reactions.order || ['like', 'heart', 'angry'];
+                const reactionOrder = post.reactionOrder || sortReactionsByCount(reactions);
                 
                 let reactionsHtml = '<div class="post-reactions">';
                 for (const rt of reactionOrder) {
@@ -546,7 +575,7 @@
             const date = new Date().toISOString().split('T')[0];
             try {
                 if (editingPostId) { const postRef = doc(db, "posts", editingPostId); await updateDoc(postRef, { title, content, date }); }
-                else { await addDoc(collection(db, "posts"), { title, content, date, reactions: { like: [], heart: [], angry: [], order: ['like', 'heart', 'angry'] } }); }
+                else { await addDoc(collection(db, "posts"), { title, content, date, reactions: { like: [], heart: [], angry: [] }, reactionOrder: ['like', 'heart', 'angry'] }); }
                 await loadPosts(); closePostModal(); alert(editingPostId ? 'Пост обновлён!' : 'Пост добавлен!');
             } catch (error) { console.error("Ошибка сохранения поста:", error); alert('Ошибка сохранения поста'); }
         }
@@ -831,6 +860,7 @@
         window.showReplyToQuestionPrompt = showReplyToQuestionPrompt;
         window.showReplyToReplyPrompt = showReplyToReplyPrompt;
         window.deleteReply = deleteReply;
+        window.toggleReplies = toggleReplies;
         window.toggleAdminPanel = toggleAdminPanel;
         window.addPostReaction = addPostReaction;
         window.addMessageReaction = addMessageReaction;
