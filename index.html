@@ -20,7 +20,6 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         window.db = db;
-        console.log("Firebase подключен!");
     </script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -54,11 +53,11 @@
         .message-question-text { color: #333; margin-bottom: 15px; padding: 10px; background: white; border-radius: 10px; }
         .message-answer { background: #e8f5e9; padding: 15px; border-radius: 10px; margin-top: 15px; }
         .message-answer-label { font-weight: bold; color: #2e7d32; margin-bottom: 8px; }
-        .admin-answer-form { margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd; display: none; }
-        .admin-answer-form textarea { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 8px; font-family: inherit; }
-        .admin-answer-form button { background: #667eea; color: white; border: none; padding: 8px 20px; border-radius: 5px; cursor: pointer; margin-right: 10px; }
-        .delete-message-btn { background: #dc3545; color: white; border: none; padding: 8px 20px; border-radius: 5px; cursor: pointer; }
-        .add-post-btn, .admin-questions-btn { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; display: none; }
+        .admin-buttons { margin-top: 15px; display: flex; gap: 10px; }
+        .admin-buttons button { padding: 8px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; }
+        .admin-buttons .reply-btn { background: #667eea; color: white; }
+        .admin-buttons .delete-btn { background: #dc3545; color: white; }
+        .add-post-btn, .admin-toggle-btn { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; display: none; }
         .post-card { background: #f8f9fa; border-radius: 15px; padding: 20px; margin-bottom: 20px; }
         .post-date { color: #999; font-size: 12px; margin-bottom: 10px; }
         .post-title { color: #333; font-size: 20px; margin-bottom: 10px; }
@@ -84,8 +83,8 @@
         .modal-content { background: white; padding: 30px; border-radius: 20px; text-align: center; max-width: 350px; width: 90%; }
         .modal-content input { padding: 10px; font-size: 18px; margin: 15px 0; border: 1px solid #ddd; border-radius: 8px; width: 150px; }
         .modal-content button { background: #667eea; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; margin: 5px; }
-        .post-modal, .question-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 3000; }
-        .post-modal-content, .question-modal-content { background: white; padding: 30px; border-radius: 20px; max-width: 500px; width: 90%; }
+        .post-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 3000; }
+        .post-modal-content { background: white; padding: 30px; border-radius: 20px; max-width: 500px; width: 90%; }
         .post-modal-content input, .post-modal-content textarea { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 8px; }
         .post-modal-content textarea { min-height: 150px; }
         .post-modal-content button { background: #667eea; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; margin-right: 10px; }
@@ -113,7 +112,7 @@
 
         <div id="fullscreenModal" class="fullscreen-modal" onclick="closeFullscreen()">
             <span class="close-fullscreen">&times;</span>
-            <img id="fullscreenImage" src="" alt="Полноразмерное фото">
+            <img id="fullscreenImage" src="">
         </div>
 
         <div id="postModal" class="post-modal">
@@ -128,7 +127,7 @@
 
         <div id="mainScreen" class="main-screen">
             <div class="main-photo-container" id="mainPhotoContainer" onclick="openMainPhotoFullscreen()">
-                <img id="mainPhoto" class="main-photo" style="display: none;" alt="Фото бизнеса">
+                <img id="mainPhoto" class="main-photo" style="display: none;">
                 <div id="photoPlaceholder" class="photo-placeholder">📷</div>
                 <button class="upload-photo-btn" id="uploadMainPhotoBtn" onclick="event.stopPropagation(); triggerMainPhotoUpload()">+</button>
             </div>
@@ -178,7 +177,7 @@
             <button class="btn-back" onclick="hideQuestionsScreen()">← Назад</button>
             <div class="questions-header">
                 <h2>💬 Вопросы и ответы</h2>
-                <button id="adminQuestionsBtn" class="admin-questions-btn" onclick="toggleAdminMode()">📋 Управление сообщениями</button>
+                <button id="adminToggleBtn" class="admin-toggle-btn" onclick="toggleAdminPanel()">🔧 Управление сообщениями</button>
             </div>
             <div class="question-form" id="askForm">
                 <h3>📝 Задать вопрос</h3>
@@ -209,13 +208,12 @@
         
         const ADMIN_PASSWORD = "467211";
         let isAdmin = false;
-        let pendingAction = null;
-        let isTextEditingEnabled = false;
+        let isAdminPanelVisible = false;
         let images = [];
         let posts = [];
         let messages = [];
         let editingPostId = null;
-        let adminModeActive = false;
+        let isTextEditingEnabled = false;
 
         // ============ ВОПРОСЫ И ОТВЕТЫ ============
         async function loadMessages() {
@@ -250,16 +248,62 @@
                     <div class="message-date">📅 ${msg.date}</div>
                     <div class="message-question-text">❓ ${escapeHtml(msg.question)}</div>
                     ${msg.answer ? `<div class="message-answer"><div class="message-answer-label">✅ Ответ администратора:</div>${escapeHtml(msg.answer)}</div>` : '<div class="message-answer" style="background:#fff3cd;"><div class="message-answer-label">⏳ Ожидает ответа...</div></div>'}
-                    ${isAdmin && adminModeActive ? `
-                        <div class="admin-answer-form" id="answer-form-${msg.id}" style="display: block;">
-                            <textarea id="answer-text-${msg.id}" placeholder="Введите ответ...">${msg.answer || ''}</textarea>
-                            <button onclick="submitAnswer('${msg.id}')">💾 Ответить</button>
-                            <button class="delete-message-btn" onclick="deleteMessage('${msg.id}')">🗑️ Удалить</button>
+                    ${isAdmin && isAdminPanelVisible ? `
+                        <div class="admin-buttons">
+                            <button class="reply-btn" onclick="showReplyPrompt('${msg.id}')">✏️ Ответить</button>
+                            <button class="delete-btn" onclick="deleteMessage('${msg.id}')">🗑️ Удалить</button>
                         </div>
                     ` : ''}
                 `;
                 container.appendChild(messageCard);
             });
+        }
+
+        function toggleAdminPanel() {
+            if (!isAdmin) {
+                showPasswordModal('adminPanel');
+                return;
+            }
+            isAdminPanelVisible = !isAdminPanelVisible;
+            const btn = document.getElementById('adminToggleBtn');
+            if (isAdminPanelVisible) {
+                btn.innerHTML = '🔒 Скрыть управление';
+                btn.style.background = 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)';
+            } else {
+                btn.innerHTML = '🔧 Управление сообщениями';
+                btn.style.background = 'linear-gradient(135deg, #28a745 0%, #20c997 100%)';
+            }
+            renderMessages();
+        }
+
+        async function showReplyPrompt(messageId) {
+            const message = messages.find(m => m.id === messageId);
+            if (!message) return;
+            const answer = prompt('Введите ответ на вопрос:', message.answer || '');
+            if (answer !== null && answer.trim() !== '') {
+                try {
+                    const messageRef = doc(db, "messages", messageId);
+                    await updateDoc(messageRef, { answer: answer.trim() });
+                    await loadMessages();
+                    alert('Ответ сохранён!');
+                } catch (error) {
+                    console.error("Ошибка сохранения ответа:", error);
+                    alert('Ошибка сохранения ответа');
+                }
+            }
+        }
+
+        async function deleteMessage(messageId) {
+            if (confirm('Удалить это сообщение навсегда?')) {
+                try {
+                    await deleteDoc(doc(db, "messages", messageId));
+                    await loadMessages();
+                    alert('Сообщение удалено!');
+                } catch (error) {
+                    console.error("Ошибка удаления:", error);
+                    alert('Ошибка удаления');
+                }
+            }
         }
 
         async function sendQuestion() {
@@ -282,64 +326,15 @@
             }
         }
 
-        async function submitAnswer(messageId) {
-            if (!isAdmin) return;
-            const answerText = document.getElementById(`answer-text-${messageId}`).value.trim();
-            if (!answerText) {
-                alert('Введите ответ!');
-                return;
-            }
-            try {
-                const messageRef = doc(db, "messages", messageId);
-                await updateDoc(messageRef, { answer: answerText });
-                await loadMessages();
-                alert('Ответ сохранён!');
-            } catch (error) {
-                console.error("Ошибка сохранения ответа:", error);
-                alert('Ошибка сохранения ответа');
-            }
-        }
-
-        async function deleteMessage(messageId) {
-            if (!isAdmin) return;
-            if (confirm('Удалить это сообщение?')) {
-                try {
-                    await deleteDoc(doc(db, "messages", messageId));
-                    await loadMessages();
-                    alert('Сообщение удалено!');
-                } catch (error) {
-                    console.error("Ошибка удаления:", error);
-                    alert('Ошибка удаления');
-                }
-            }
-        }
-
-        function toggleAdminMode() {
-            if (!isAdmin) {
-                showPasswordModal('adminMessages');
-                return;
-            }
-            adminModeActive = !adminModeActive;
-            const btn = document.getElementById('adminQuestionsBtn');
-            if (adminModeActive) {
-                btn.innerHTML = '🔒 Скрыть управление';
-                btn.style.background = 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)';
-            } else {
-                btn.innerHTML = '📋 Управление сообщениями';
-                btn.style.background = 'linear-gradient(135deg, #28a745 0%, #20c997 100%)';
-            }
-            renderMessages();
-        }
-
         function showQuestionsScreen() {
             document.getElementById('mainScreen').style.display = 'none';
             document.getElementById('detailScreen').style.display = 'none';
             document.getElementById('postsScreen').style.display = 'none';
             document.getElementById('questionsScreen').style.display = 'block';
-            adminModeActive = false;
-            const btn = document.getElementById('adminQuestionsBtn');
+            isAdminPanelVisible = false;
+            const btn = document.getElementById('adminToggleBtn');
             if (btn) {
-                btn.innerHTML = '📋 Управление сообщениями';
+                btn.innerHTML = '🔧 Управление сообщениями';
                 btn.style.background = 'linear-gradient(135deg, #28a745 0%, #20c997 100%)';
                 btn.style.display = isAdmin ? 'block' : 'none';
             }
@@ -356,9 +351,7 @@
             try {
                 const querySnapshot = await getDocs(collection(db, "posts"));
                 posts = [];
-                querySnapshot.forEach((doc) => {
-                    posts.push({ id: doc.id, ...doc.data() });
-                });
+                querySnapshot.forEach((doc) => { posts.push({ id: doc.id, ...doc.data() }); });
                 posts.sort((a, b) => new Date(b.date) - new Date(a.date));
                 renderPosts();
             } catch (error) { console.error("Ошибка загрузки постов:", error); }
@@ -367,10 +360,7 @@
         function renderPosts() {
             const container = document.getElementById('postsList');
             if (!container) return;
-            if (posts.length === 0) {
-                container.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">Пока нет постов. Добавьте первый!</div>';
-                return;
-            }
+            if (posts.length === 0) { container.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">Пока нет постов. Добавьте первый!</div>'; return; }
             container.innerHTML = '';
             posts.forEach(post => {
                 const postCard = document.createElement('div');
@@ -385,10 +375,7 @@
                     </div>
                 `;
                 container.appendChild(postCard);
-                if (isAdmin) {
-                    const actionsDiv = document.getElementById(`post-actions-${post.id}`);
-                    if (actionsDiv) actionsDiv.style.display = 'flex';
-                }
+                if (isAdmin) { const actionsDiv = document.getElementById(`post-actions-${post.id}`); if (actionsDiv) actionsDiv.style.display = 'flex'; }
             });
         }
 
@@ -398,34 +385,23 @@
             if (!title || !content) { alert('Заполните заголовок и текст поста!'); return; }
             const date = new Date().toISOString().split('T')[0];
             try {
-                if (editingPostId) {
-                    const postRef = doc(db, "posts", editingPostId);
-                    await updateDoc(postRef, { title, content, date });
-                } else {
-                    await addDoc(collection(db, "posts"), { title, content, date });
-                }
-                await loadPosts();
-                closePostModal();
-                alert(editingPostId ? 'Пост обновлён!' : 'Пост добавлен!');
+                if (editingPostId) { const postRef = doc(db, "posts", editingPostId); await updateDoc(postRef, { title, content, date }); }
+                else { await addDoc(collection(db, "posts"), { title, content, date }); }
+                await loadPosts(); closePostModal(); alert(editingPostId ? 'Пост обновлён!' : 'Пост добавлен!');
             } catch (error) { console.error("Ошибка сохранения поста:", error); alert('Ошибка сохранения поста'); }
         }
 
         async function deletePost(postId) {
             if (confirm('Удалить этот пост?')) {
-                try {
-                    await deleteDoc(doc(db, "posts", postId));
-                    await loadPosts();
-                    alert('Пост удалён!');
-                } catch (error) { console.error("Ошибка удаления поста:", error); alert('Ошибка удаления поста'); }
+                try { await deleteDoc(doc(db, "posts", postId)); await loadPosts(); alert('Пост удалён!'); }
+                catch (error) { console.error("Ошибка удаления поста:", error); alert('Ошибка удаления поста'); }
             }
         }
 
         function openAddPostModal() {
             if (!isAdmin) { showPasswordModal('addPost'); return; }
-            editingPostId = null;
-            document.getElementById('postModalTitle').innerText = '➕ Добавить пост';
-            document.getElementById('postTitle').value = '';
-            document.getElementById('postContent').value = '';
+            editingPostId = null; document.getElementById('postModalTitle').innerText = '➕ Добавить пост';
+            document.getElementById('postTitle').value = ''; document.getElementById('postContent').value = '';
             document.getElementById('postModal').style.display = 'flex';
         }
 
@@ -433,10 +409,8 @@
             if (!isAdmin) return;
             const post = posts.find(p => p.id === postId);
             if (!post) return;
-            editingPostId = postId;
-            document.getElementById('postModalTitle').innerText = '✏️ Редактировать пост';
-            document.getElementById('postTitle').value = post.title;
-            document.getElementById('postContent').value = post.content;
+            editingPostId = postId; document.getElementById('postModalTitle').innerText = '✏️ Редактировать пост';
+            document.getElementById('postTitle').value = post.title; document.getElementById('postContent').value = post.content;
             document.getElementById('postModal').style.display = 'flex';
         }
 
@@ -460,27 +434,20 @@
         // ============ ОСТАЛЬНЫЕ ФУНКЦИИ ============
         async function saveToFirebase(dataType, value) {
             if (!isAdmin) return;
-            try {
-                const docRef = doc(db, "businessData", "main");
-                await setDoc(docRef, { [dataType]: value }, { merge: true });
-                alert("Изменения сохранены и видны всем!");
-            } catch (error) { console.error("Ошибка сохранения:", error); }
+            try { const docRef = doc(db, "businessData", "main"); await setDoc(docRef, { [dataType]: value }, { merge: true }); alert("Изменения сохранены и видны всем!"); }
+            catch (error) { console.error("Ошибка сохранения:", error); }
         }
 
         async function saveImagesToFirebase(imagesArray) {
             if (!isAdmin) return;
-            try {
-                const docRef = doc(db, "businessData", "main");
-                await setDoc(docRef, { galleryImages: imagesArray }, { merge: true });
-            } catch (error) { console.error("Ошибка сохранения галереи:", error); }
+            try { const docRef = doc(db, "businessData", "main"); await setDoc(docRef, { galleryImages: imagesArray }, { merge: true }); }
+            catch (error) { console.error("Ошибка сохранения галереи:", error); }
         }
 
         async function saveDescriptionBgColorToFirebase(color) {
             if (!isAdmin) return;
-            try {
-                const docRef = doc(db, "businessData", "main");
-                await setDoc(docRef, { descriptionBgColor: color }, { merge: true });
-            } catch (error) { console.error("Ошибка сохранения цвета фона:", error); }
+            try { const docRef = doc(db, "businessData", "main"); await setDoc(docRef, { descriptionBgColor: color }, { merge: true }); }
+            catch (error) { console.error("Ошибка сохранения цвета фона:", error); }
         }
 
         async function loadFromFirebase() {
@@ -491,17 +458,10 @@
                     const data = docSnap.data();
                     if (data.mainTitle) document.getElementById('mainTitle').innerText = data.mainTitle;
                     if (data.mainSubtitle) document.getElementById('mainSubtitle').innerText = data.mainSubtitle;
-                    if (data.mainPhoto) {
-                        document.getElementById('mainPhoto').src = data.mainPhoto;
-                        document.getElementById('mainPhoto').style.display = 'block';
-                        document.getElementById('photoPlaceholder').style.display = 'none';
-                    }
+                    if (data.mainPhoto) { document.getElementById('mainPhoto').src = data.mainPhoto; document.getElementById('mainPhoto').style.display = 'block'; document.getElementById('photoPlaceholder').style.display = 'none'; }
                     if (data.businessDescription) document.getElementById('descriptionText').innerHTML = data.businessDescription;
                     if (data.descriptionBgColor) document.getElementById('descriptionText').style.backgroundColor = data.descriptionBgColor;
-                    if (data.galleryImages && Array.isArray(data.galleryImages)) {
-                        images = data.galleryImages;
-                        renderGallery();
-                    }
+                    if (data.galleryImages && Array.isArray(data.galleryImages)) { images = data.galleryImages; renderGallery(); }
                 } else {
                     document.getElementById('mainTitle').innerText = "Название бизнеса";
                     document.getElementById('mainSubtitle').innerText = "Описание бизнеса";
@@ -510,34 +470,23 @@
             } catch (error) { console.error("Ошибка загрузки из Firebase:", error); }
         }
 
-        function openFullscreen(imageUrl) {
-            document.getElementById('fullscreenImage').src = imageUrl;
-            document.getElementById('fullscreenModal').style.display = 'flex';
-        }
+        function openFullscreen(imageUrl) { document.getElementById('fullscreenImage').src = imageUrl; document.getElementById('fullscreenModal').style.display = 'flex'; }
         function closeFullscreen() { document.getElementById('fullscreenModal').style.display = 'none'; }
-        function openMainPhotoFullscreen() {
-            const img = document.getElementById('mainPhoto');
-            if (img.style.display === 'block' && img.src) openFullscreen(img.src);
-        }
+        function openMainPhotoFullscreen() { const img = document.getElementById('mainPhoto'); if (img.style.display === 'block' && img.src) openFullscreen(img.src); }
 
-        function showPasswordModal(action) {
-            pendingAction = action;
-            document.getElementById('passwordModal').style.display = 'flex';
-            document.getElementById('adminPasswordInput').value = '';
-        }
+        function showPasswordModal(action) { pendingAction = action; document.getElementById('passwordModal').style.display = 'flex'; document.getElementById('adminPasswordInput').value = ''; }
         function closePasswordModal() { document.getElementById('passwordModal').style.display = 'none'; pendingAction = null; }
+        let pendingAction = null;
 
         async function checkAdminPassword() {
             const password = document.getElementById('adminPasswordInput').value;
             if (password === ADMIN_PASSWORD) {
-                isAdmin = true;
-                closePasswordModal();
-                enableAdminMode();
+                isAdmin = true; closePasswordModal(); enableAdminMode();
                 if (pendingAction === 'photo') setTimeout(() => mainPhotoInput.click(), 100);
                 else if (pendingAction === 'editMain') editMainScreenText();
                 else if (pendingAction === 'uploadImage') setTimeout(() => galleryImageInput.click(), 100);
                 else if (pendingAction === 'addPost') openAddPostModal();
-                else if (pendingAction === 'adminMessages') toggleAdminMode();
+                else if (pendingAction === 'adminPanel') toggleAdminPanel();
                 pendingAction = null;
             } else { alert('Неверный пароль!'); document.getElementById('adminPasswordInput').value = ''; }
         }
@@ -550,15 +499,13 @@
             document.getElementById('adminPanelDetail').style.display = 'flex';
             document.getElementById('imageUploadArea').style.display = 'block';
             document.getElementById('addPostBtn').style.display = 'block';
-            document.getElementById('adminQuestionsBtn').style.display = 'block';
+            document.getElementById('adminToggleBtn').style.display = 'block';
             document.querySelectorAll('.delete-img-btn').forEach(btn => btn.style.display = 'block');
             document.querySelectorAll('.post-actions').forEach(actions => actions.style.display = 'flex');
         }
 
         const mainPhotoInput = document.createElement('input');
-        mainPhotoInput.type = 'file';
-        mainPhotoInput.accept = 'image/*';
-        mainPhotoInput.style.display = 'none';
+        mainPhotoInput.type = 'file'; mainPhotoInput.accept = 'image/*'; mainPhotoInput.style.display = 'none';
         mainPhotoInput.onchange = async (event) => {
             const file = event.target.files[0];
             if (file && file.type.startsWith('image/')) {
@@ -592,6 +539,7 @@
             renderGallery();
             if (isAdmin) document.querySelectorAll('.delete-img-btn').forEach(btn => btn.style.display = 'block');
         }
+
         function hideDetailScreen() {
             document.getElementById('detailScreen').style.display = 'none';
             document.getElementById('mainScreen').style.display = 'block';
@@ -607,6 +555,7 @@
             div.style.border = "2px solid #ffc107";
             alert('Редактирование текста включено!');
         }
+
         async function saveTextChanges() {
             if (!isTextEditingEnabled) { alert('Сначала включите режим редактирования!'); return; }
             const newText = document.getElementById('descriptionText').innerHTML;
@@ -617,6 +566,7 @@
             div.style.border = "none";
             isTextEditingEnabled = false;
         }
+
         async function changeTextBgColor() {
             if (!isAdmin) { showPasswordModal('changeColor'); return; }
             const color = prompt('Введите цвет фона (например: lightblue, #f0f0f0, yellow):', '#f8f9fa');
@@ -639,10 +589,7 @@
         }
 
         const galleryImageInput = document.createElement('input');
-        galleryImageInput.type = 'file';
-        galleryImageInput.accept = 'image/*';
-        galleryImageInput.multiple = true;
-        galleryImageInput.style.display = 'none';
+        galleryImageInput.type = 'file'; galleryImageInput.accept = 'image/*'; galleryImageInput.multiple = true; galleryImageInput.style.display = 'none';
         galleryImageInput.onchange = async (event) => {
             if (!isAdmin) return;
             const files = Array.from(event.target.files);
@@ -673,9 +620,7 @@
             area.addEventListener('dragover', (e) => { e.preventDefault(); area.style.borderColor = '#667eea'; area.style.backgroundColor = '#f8f9fa'; });
             area.addEventListener('dragleave', (e) => { e.preventDefault(); area.style.borderColor = '#dee2e6'; area.style.backgroundColor = 'transparent'; });
             area.addEventListener('drop', async (e) => {
-                e.preventDefault();
-                area.style.borderColor = '#dee2e6';
-                area.style.backgroundColor = 'transparent';
+                e.preventDefault(); area.style.borderColor = '#dee2e6'; area.style.backgroundColor = 'transparent';
                 if (!isAdmin) { showPasswordModal('uploadImage'); return; }
                 const files = Array.from(e.dataTransfer.files);
                 const imageFiles = files.filter(f => f.type.startsWith('image/'));
@@ -729,9 +674,9 @@
         window.savePost = savePost;
         window.closePostModal = closePostModal;
         window.sendQuestion = sendQuestion;
-        window.submitAnswer = submitAnswer;
         window.deleteMessage = deleteMessage;
-        window.toggleAdminMode = toggleAdminMode;
+        window.showReplyPrompt = showReplyPrompt;
+        window.toggleAdminPanel = toggleAdminPanel;
 
         init();
     </script>
