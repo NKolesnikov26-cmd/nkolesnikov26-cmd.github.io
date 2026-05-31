@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Бизнес-приложение</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .main-screen {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .main-photo-container {
+            width: 200px;
+            height: 200px;
+            margin: 0 auto 20px;
+            border-radius: 50%;
+            overflow: hidden;
+            background: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            border: 3px solid #667eea;
+            transition: transform 0.3s;
+            cursor: pointer;
+        }
+
+        .main-photo-container:hover {
+            transform: scale(1.02);
+        }
+
+        .main-photo {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .photo-placeholder {
+            font-size: 60px;
+            color: #999;
+        }
+
+        .upload-photo-btn {
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 35px;
+            height: 35px;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.3s;
+            display: none;
+            z-index: 10;
+        }
+
+        .upload-photo-btn:hover {
+            background: #764ba2;
+        }
+
+        .business-name {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 2.5em;
+            animation: fadeInUp 0.8s ease-out;
+        }
+
+        .business-subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+            animation: fadeInUp 0.8s ease-out 0.2s both;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .btn-more {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 18px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+            margin: 10px;
+        }
+
+        .btn-more:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+
+        .admin-login-btn {
+            background: transparent;
+            border: 1px solid #ddd;
+            color: #999;
+            padding: 5px 15px;
+            font-size: 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: all 0.3s;
+        }
+
+        .admin-login-btn:hover {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        .admin-panel-main {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .admin-panel-main button {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+
+        .detail-screen {
+            display: none;
+            background: white;
+            border-radius: 20px;
+            max-width: 900px;
+            width: 100%;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            position: relative;
+        }
+
+        .detail-screen::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        .detail-screen::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        .detail-screen::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+
+        .detail-content {
+            padding: 30px;
+        }
+
+        .admin-panel-detail {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            display: none;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+            border: 1px solid #dee2e6;
+        }
+
+        .admin-panel-detail button {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .admin-panel-detail button:hover {
+            background: #5a6268;
+        }
+
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .image-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            position: relative;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .image-card:hover {
+            transform: scale(1.02);
+        }
+
+        .image-card img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+        }
+
+        .delete-img-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 5px 10px;
+            cursor: pointer;
+            display: none;
+            z-index: 10;
+        }
+
+        .delete-img-btn:hover {
+            background: #c82333;
+        }
+
+        .image-upload {
+            text-align: center;
+            padding: 15px;
+            border: 2px dashed #dee2e6;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .image-upload:hover {
+            border-color: #667eea;
+            background: #f8f9fa;
+        }
+
+        .image-upload input {
+            display: none;
+        }
+
+        .image-upload label {
+            cursor: pointer;
+            display: inline-block;
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+
+        .description-area {
+            margin-top: 20px;
+        }
+
+        .description-area h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .description-text {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            line-height: 1.6;
+            color: #333;
+            min-height: 200px;
+        }
+
+        .description-text[contenteditable="true"] {
+            outline: 2px solid #28a745;
+            background-color: #fff3cd;
+            cursor: text;
+        }
+
+        .btn-back {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-bottom: 20px;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+
+        .btn-back:hover {
+            background: #5a6268;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 350px;
+            width: 90%;
+        }
+
+        .modal-content input {
+            padding: 10px;
+            font-size: 18px;
+            text-align: center;
+            margin: 15px 0;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            width: 150px;
+        }
+
+        .modal-content button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 5px;
+        }
+
+        .fullscreen-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            cursor: pointer;
+        }
+
+        .fullscreen-modal img {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+            border-radius: 10px;
+        }
+
+        .fullscreen-modal .close-fullscreen {
+            position: absolute;
+            top: 20px;
+            right: 40px;
+            color: white;
+            font-size: 40px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .fullscreen-modal .close-fullscreen:hover {
+            color: #ddd;
+        }
+
+        .view-mode-badge {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            z-index: 999;
+        }
+
+        @media (max-width: 768px) {
+            .main-screen, .detail-screen {
+                margin: 10px;
+            }
+            
+            .gallery {
+                grid-template-columns: 1fr;
+            }
+            
+            .main-photo-container {
+                width: 150px;
+                height: 150px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="view-mode-badge" id="modeBadge">👁️ Режим просмотра</div>
+
+    <div id="passwordModal" class="modal">
+        <div class="modal-content">
+            <h3>🔐 Вход для администратора</h3>
+            <p>Введите пароль для редактирования</p>
+            <input type="password" id="adminPasswordInput" maxlength="6" placeholder="******">
+            <br>
+            <button onclick="checkAdminPassword()">Войти</button>
+            <button onclick="closePasswordModal()">Отмена</button>
+        </div>
+    </div>
+
+    <div id="fullscreenModal" class="fullscreen-modal" onclick="closeFullscreen()">
+        <span class="close-fullscreen">&times;</span>
+        <img id="fullscreenImage" src="" alt="Полноразмерное фото">
+    </div>
+
+    <div id="mainScreen" class="main-screen">
+        <div class="main-photo-container" id="mainPhotoContainer" onclick="openMainPhotoFullscreen()">
+            <img id="mainPhoto" class="main-photo" style="display: none;" alt="Фото бизнеса">
+            <div id="photoPlaceholder" class="photo-placeholder">📷</div>
+            <button class="upload-photo-btn" id="uploadMainPhotoBtn" onclick="event.stopPropagation(); triggerMainPhotoUpload()">+</button>
+        </div>
+        
+        <h1 class="business-name" id="mainTitle">Название бизнеса</h1>
+        <div class="business-subtitle" id="mainSubtitle">Описание бизнеса</div>
+        <button class="btn-more" onclick="showDetailScreen()">Узнать больше</button>
+        <br>
+        <button class="admin-login-btn" onclick="showPasswordModal('login')">🔑 Вход для администратора</button>
+        
+        <div id="adminPanelMain" class="admin-panel-main">
+            <button onclick="editMainScreenText()">✏️ Изменить название и описание</button>
+        </div>
+    </div>
+
+    <div id="detailScreen" class="detail-screen">
+        <div class="detail-content">
+            <button class="btn-back" onclick="hideDetailScreen()">← Назад</button>
+            
+            <div id="adminPanelDetail" class="admin-panel-detail">
+                <button onclick="enableTextEditing()">✏️ Редактировать текст</button>
+                <button onclick="saveTextChanges()">💾 Сохранить текст</button>
+                <button onclick="changeTextBgColor()">🎨 Сменить фон текста</button>
+            </div>
+            
+            <h3>Галерея</h3>
+            <div class="gallery" id="gallery"></div>
+            
+            <div id="imageUploadArea" class="image-upload" onclick="triggerImageUpload()">
+                <div>📷 Нажмите или перетащите изображения</div>
+                <label>Выбрать изображения</label>
+            </div>
+            
+            <div class="description-area">
+                <h3>Описание</h3>
+                <div class="description-text" id="descriptionText">
+                    Здесь будет ваше описание. Войдите как администратор, чтобы изменить текст.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const ADMIN_PASSWORD = "467211";
+        let isAdmin = localStorage.getItem('isAdmin') === 'true';
+        let pendingAction = null;
+        let isTextEditingEnabled = false;
+        let images = JSON.parse(localStorage.getItem('businessImages')) || [];
+
+        // Создаем скрытые input'ы для загрузки файлов
+        const mainPhotoInput = document.createElement('input');
+        mainPhotoInput.type = 'file';
+        mainPhotoInput.id = 'mainPhotoInput';
+        mainPhotoInput.accept = 'image/*';
+        mainPhotoInput.style.display = 'none';
+        mainPhotoInput.onchange = uploadMainPhoto;
+        document.body.appendChild(mainPhotoInput);
+
+        const galleryImageInput = document.createElement('input');
+        galleryImageInput.type = 'file';
+        galleryImageInput.id = 'galleryImageInput';
+        galleryImageInput.accept = 'image/*';
+        galleryImageInput.multiple = true;
+        galleryImageInput.style.display = 'none';
+        galleryImageInput.onchange = handleImageUpload;
+        document.body.appendChild(galleryImageInput);
+
+        // Функции для вызова загрузки файлов
+        function triggerMainPhotoUpload() {
+            if (!isAdmin) {
+                showPasswordModal('photo');
+                return;
+            }
+            mainPhotoInput.click();
+        }
+
+        function triggerImageUpload() {
+            if (!isAdmin) {
+                showPasswordModal('uploadImage');
+                return;
+            }
+            galleryImageInput.click();
+        }
+
+        function openFullscreen(imageUrl) {
+            const modal = document.getElementById('fullscreenModal');
+            const img = document.getElementById('fullscreenImage');
+            img.src = imageUrl;
+            modal.style.display = 'flex';
+        }
+
+        function closeFullscreen() {
+            document.getElementById('fullscreenModal').style.display = 'none';
+        }
+
+        function openMainPhotoFullscreen() {
+            const img = document.getElementById('mainPhoto');
+            if (img.style.display === 'block' && img.src && img.src !== '') {
+                openFullscreen(img.src);
+            }
+        }
+
+        function showPasswordModal(action) {
+            pendingAction = action;
+            document.getElementById('passwordModal').style.display = 'flex';
+            document.getElementById('adminPasswordInput').value = '';
+        }
+
+        function closePasswordModal() {
+            document.getElementById('passwordModal').style.display = 'none';
+            pendingAction = null;
+        }
+
+        function checkAdminPassword() {
+            const password = document.getElementById('adminPasswordInput').value;
+            
+            if (password === ADMIN_PASSWORD) {
+                isAdmin = true;
+                localStorage.setItem('isAdmin', 'true');
+                closePasswordModal();
+                enableAdminMode();
+                
+                if (pendingAction === 'photo') {
+                    setTimeout(() => mainPhotoInput.click(), 100);
+                } else if (pendingAction === 'editMain') {
+                    editMainScreenText();
+                } else if (pendingAction === 'uploadImage') {
+                    setTimeout(() => galleryImageInput.click(), 100);
+                }
+                pendingAction = null;
+            } else {
+                alert('Неверный пароль!');
+                document.getElementById('adminPasswordInput').value = '';
+            }
+        }
+
+        function enableAdminMode() {
+            document.getElementById('modeBadge').innerHTML = '👑 Режим администратора';
+            document.getElementById('modeBadge').style.background = 'rgba(40,167,69,0.9)';
+            document.getElementById('uploadMainPhotoBtn').style.display = 'flex';
+            document.getElementById('adminPanelMain').style.display = 'block';
+            document.getElementById('adminPanelDetail').style.display = 'flex';
+            document.getElementById('imageUploadArea').style.display = 'block';
+            
+            document.querySelectorAll('.delete-img-btn').forEach(btn => {
+                btn.style.display = 'block';
+            });
+        }
+
+        function uploadMainPhoto(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = document.getElementById('mainPhoto');
+                    const placeholder = document.getElementById('photoPlaceholder');
+                    img.src = e.target.result;
+                    img.style.display = 'block';
+                    placeholder.style.display = 'none';
+                    localStorage.setItem('mainPhoto', e.target.result);
+                    alert('Фото успешно обновлено!');
+                };
+                reader.readAsDataURL(file);
+            } else {
+                alert('Пожалуйста, загружайте изображения!');
+            }
+            mainPhotoInput.value = '';
+        }
+
+        function loadMainPhoto() {
+            const savedPhoto = localStorage.getItem('mainPhoto');
+            if (savedPhoto && savedPhoto !== '') {
+                const img = document.getElementById('mainPhoto');
+                const placeholder = document.getElementById('photoPlaceholder');
+                img.src = savedPhoto;
+                img.style.display = 'block';
+                placeholder.style.display = 'none';
+            }
+        }
+
+        function editMainScreenText() {
+            if (!isAdmin) {
+                showPasswordModal('editMain');
+                return;
+            }
+            
+            const newTitle = prompt('Введите новое название бизнеса:', document.getElementById('mainTitle').innerText);
+            const newSubtitle = prompt('Введите новое описание:', document.getElementById('mainSubtitle').innerText);
+            
+            if (newTitle && newTitle.trim() !== '') {
+                document.getElementById('mainTitle').innerText = newTitle;
+                localStorage.setItem('mainTitle', newTitle);
+            }
+            if (newSubtitle && newSubtitle.trim() !== '') {
+                document.getElementById('mainSubtitle').innerText = newSubtitle;
+                localStorage.setItem('mainSubtitle', newSubtitle);
+            }
+            alert('Название и описание успешно изменены!');
+        }
+
+        function loadMainScreenText() {
+            if (localStorage.getItem('mainTitle')) {
+                document.getElementById('mainTitle').innerText = localStorage.getItem('mainTitle');
+            }
+            if (localStorage.getItem('mainSubtitle')) {
+                document.getElementById('mainSubtitle').innerText = localStorage.getItem('mainSubtitle');
+            }
+        }
+
+        function showDetailScreen() {
+            document.getElementById('mainScreen').style.display = 'none';
+            document.getElementById('detailScreen').style.display = 'block';
+            renderGallery();
+            loadSavedDescription();
+            loadSavedBgColor();
+            if (isAdmin) {
+                document.querySelectorAll('.delete-img-btn').forEach(btn => {
+                    btn.style.display = 'block';
+                });
+            }
+        }
+
+        function hideDetailScreen() {
+            document.getElementById('mainScreen').style.display = 'flex';
+            document.getElementById('detailScreen').style.display = 'none';
+            isTextEditingEnabled = false;
+        }
+
+        function enableTextEditing() {
+            if (!isAdmin) {
+                showPasswordModal('editText');
+                return;
+            }
+            
+            isTextEditingEnabled = true;
+            const descriptionDiv = document.getElementById('descriptionText');
+            descriptionDiv.contentEditable = "true";
+            descriptionDiv.style.backgroundColor = "#fff3cd";
+            descriptionDiv.style.border = "2px solid #ffc107";
+            alert('Редактирование текста включено!');
+        }
+
+        function saveTextChanges() {
+            if (!isTextEditingEnabled) {
+                alert('Сначала включите режим редактирования!');
+                return;
+            }
+            
+            const newText = document.getElementById('descriptionText').innerHTML;
+            localStorage.setItem('businessDescription', newText);
+            
+            const descriptionDiv = document.getElementById('descriptionText');
+            descriptionDiv.contentEditable = "false";
+            descriptionDiv.style.backgroundColor = "";
+            descriptionDiv.style.border = "none";
+            isTextEditingEnabled = false;
+            alert('Текст сохранен!');
+        }
+
+        function changeTextBgColor() {
+            if (!isAdmin) {
+                showPasswordModal('changeColor');
+                return;
+            }
+            
+            const color = prompt('Введите цвет фона (на английском или HEX, например: #f0f0f0, lightblue, yellow):', '#f8f9fa');
+            if (color) {
+                document.getElementById('descriptionText').style.backgroundColor = color;
+                localStorage.setItem('descriptionBgColor', color);
+            }
+        }
+
+        function loadSavedDescription() {
+            const savedDescription = localStorage.getItem('businessDescription');
+            if (savedDescription) {
+                document.getElementById('descriptionText').innerHTML = savedDescription;
+            }
+        }
+
+        function loadSavedBgColor() {
+            const savedColor = localStorage.getItem('descriptionBgColor');
+            if (savedColor) {
+                document.getElementById('descriptionText').style.backgroundColor = savedColor;
+            }
+        }
+
+        function renderGallery() {
+            const gallery = document.getElementById('gallery');
+            gallery.innerHTML = '';
+            
+            if (images.length === 0) {
+                gallery.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">Пока нет изображений. Загрузите первые фото!</div>';
+                return;
+            }
+            
+            images.forEach((image, index) => {
+                const imageCard = document.createElement('div');
+                imageCard.className = 'image-card';
+                imageCard.onclick = () => openFullscreen(image.url);
+                imageCard.innerHTML = `
+                    <img src="${image.url}" alt="Изображение ${index + 1}">
+                    <button class="delete-img-btn" onclick="event.stopPropagation(); deleteImage(${index})">🗑️ Удалить</button>
+                `;
+                gallery.appendChild(imageCard);
+            });
+            
+            if (isAdmin) {
+                document.querySelectorAll('.delete-img-btn').forEach(btn => {
+                    btn.style.display = 'block';
+                });
+            }
+        }
+
+        function handleImageUpload(event) {
+            const files = Array.from(event.target.files);
+            
+            files.forEach(file => {
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        images.push({ url: e.target.result, name: file.name });
+                        saveImages();
+                        renderGallery();
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    alert('Пожалуйста, загружайте только изображения!');
+                }
+            });
+            galleryImageInput.value = '';
+        }
+
+        function deleteImage(index) {
+            if (!isAdmin) {
+                showPasswordModal('deleteImage');
+                return;
+            }
+            images.splice(index, 1);
+            saveImages();
+            renderGallery();
+        }
+
+        function saveImages() {
+            localStorage.setItem('businessImages', JSON.stringify(images));
+        }
+
+        function setupDragAndDrop() {
+            const uploadArea = document.getElementById('imageUploadArea');
+            if (!uploadArea) return;
+            
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.style.borderColor = '#667eea';
+                uploadArea.style.backgroundColor = '#f8f9fa';
+            });
+            
+            uploadArea.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                uploadArea.style.borderColor = '#dee2e6';
+                uploadArea.style.backgroundColor = 'transparent';
+            });
+            
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.style.borderColor = '#dee2e6';
+                uploadArea.style.backgroundColor = 'transparent';
+                
+                if (!isAdmin) {
+                    showPasswordModal('uploadImage');
+                    return;
+                }
+                
+                const files = Array.from(e.dataTransfer.files);
+                const imageFiles = files.filter(file => file.type.startsWith('image/'));
+                
+                imageFiles.forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        images.push({ url: e.target.result, name: file.name });
+                        saveImages();
+                        renderGallery();
+                    };
+                    reader.readAsDataURL(file);
+                });
+            });
+        }
+
+        function restoreAdminSession() {
+            if (isAdmin) {
+                enableAdminMode();
+            }
+        }
+
+        function init() {
+            loadMainPhoto();
+            loadMainScreenText();
+            restoreAdminSession();
+            setupDragAndDrop();
+            renderGallery();
+        }
+        
+        window.onload = init;
+    </script>
+</body>
+</html>
