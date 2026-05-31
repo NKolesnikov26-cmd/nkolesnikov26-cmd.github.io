@@ -6,7 +6,7 @@
     <title>Бизнес-приложение</title>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
-        import { getFirestore, doc, getDoc, setDoc, collection, getDocs, addDoc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, collection, getDocs, addDoc, deleteDoc, updateDoc, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
         
         const firebaseConfig = {
             apiKey: "AIzaSyAqrvzxSxjGllPGkdzdRfW-I37VjLL7EQs",
@@ -53,15 +53,24 @@
         .message-question-text { color: #333; margin-bottom: 15px; padding: 10px; background: white; border-radius: 10px; }
         .message-answer { background: #e8f5e9; padding: 15px; border-radius: 10px; margin-top: 15px; }
         .message-answer-label { font-weight: bold; color: #2e7d32; margin-bottom: 8px; }
-        .admin-buttons { margin-top: 15px; display: flex; gap: 10px; }
+        .visitor-reply { background: #e3f2fd; padding: 12px; border-radius: 10px; margin-top: 12px; margin-left: 20px; }
+        .visitor-reply-label { font-weight: bold; color: #1565c0; margin-bottom: 6px; }
+        .admin-buttons { margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap; }
         .admin-buttons button { padding: 8px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; }
         .admin-buttons .reply-btn { background: #667eea; color: white; }
+        .admin-buttons .edit-reply-btn { background: #ffc107; color: #333; }
         .admin-buttons .delete-btn { background: #dc3545; color: white; }
-        .add-post-btn, .admin-toggle-btn { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; display: none; }
+        .visitor-reply-btn { background: #17a2b8; color: white; border: none; padding: 6px 15px; border-radius: 5px; cursor: pointer; font-size: 12px; margin-top: 10px; }
+        .reactions { display: flex; gap: 15px; margin-top: 15px; padding-top: 10px; border-top: 1px solid #ddd; }
+        .reaction-btn { background: none; border: none; font-size: 20px; cursor: pointer; padding: 5px 10px; border-radius: 20px; transition: all 0.2s; }
+        .reaction-btn:hover { background: #e0e0e0; }
+        .reaction-btn.active { background: #667eea; color: white; }
+        .reaction-count { font-size: 14px; margin-left: 5px; color: #666; }
         .post-card { background: #f8f9fa; border-radius: 15px; padding: 20px; margin-bottom: 20px; }
         .post-date { color: #999; font-size: 12px; margin-bottom: 10px; }
         .post-title { color: #333; font-size: 20px; margin-bottom: 10px; }
         .post-content { color: #666; line-height: 1.5; margin-bottom: 15px; }
+        .post-reactions { display: flex; gap: 15px; margin-top: 15px; padding-top: 10px; border-top: 1px solid #ddd; }
         .post-actions { display: none; gap: 10px; margin-top: 15px; }
         .post-actions button { background: #6c757d; color: white; border: none; padding: 5px 15px; border-radius: 5px; cursor: pointer; }
         .post-actions button.delete-btn { background: #dc3545; }
@@ -92,6 +101,7 @@
         .fullscreen-modal img { max-width: 90%; max-height: 90%; object-fit: contain; border-radius: 10px; }
         .fullscreen-modal .close-fullscreen { position: absolute; top: 20px; right: 40px; color: white; font-size: 40px; cursor: pointer; }
         .view-mode-badge { position: fixed; bottom: 20px; right: 20px; background: rgba(0,0,0,0.7); color: white; padding: 5px 15px; border-radius: 20px; font-size: 12px; z-index: 999; }
+        .add-post-btn, .admin-toggle-btn { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; display: none; }
         @media (max-width: 768px) { .main-screen, .detail-screen, .posts-screen, .questions-screen { margin: 10px; } .gallery { grid-template-columns: 1fr; } .main-photo-container { width: 150px; height: 150px; } .posts-header, .questions-header { flex-direction: column; text-align: center; } }
     </style>
 </head>
@@ -191,7 +201,7 @@
     </div>
 
     <script type="module">
-        import { getFirestore, doc, getDoc, setDoc, collection, getDocs, addDoc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, collection, getDocs, addDoc, deleteDoc, updateDoc, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
         
         const firebaseConfig = {
             apiKey: "AIzaSyAqrvzxSxjGllPGkdzdRfW-I37VjLL7EQs",
@@ -214,6 +224,56 @@
         let messages = [];
         let editingPostId = null;
         let isTextEditingEnabled = false;
+        let currentUserId = localStorage.getItem('userId');
+        if (!currentUserId) { currentUserId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9); localStorage.setItem('userId', currentUserId); }
+
+        // ============ РЕАКЦИИ НА ПОСТЫ ============
+        async function addPostReaction(postId, reactionType) {
+            const postRef = doc(db, "posts", postId);
+            const postDoc = await getDoc(postRef);
+            if (postDoc.exists()) {
+                let reactions = postDoc.data().reactions || { like: [], heart: [], angry: [] };
+                const userReactions = [];
+                if (reactions.like.includes(currentUserId)) userReactions.push('like');
+                if (reactions.heart.includes(currentUserId)) userReactions.push('heart');
+                if (reactions.angry.includes(currentUserId)) userReactions.push('angry');
+                
+                if (userReactions.includes(reactionType)) {
+                    reactions[reactionType] = reactions[reactionType].filter(id => id !== currentUserId);
+                } else {
+                    for (const ur of userReactions) {
+                        reactions[ur] = reactions[ur].filter(id => id !== currentUserId);
+                    }
+                    reactions[reactionType].push(currentUserId);
+                }
+                await updateDoc(postRef, { reactions });
+                await loadPosts();
+            }
+        }
+
+        // ============ РЕАКЦИИ НА ВОПРОСЫ ============
+        async function addMessageReaction(messageId, reactionType) {
+            const msgRef = doc(db, "messages", messageId);
+            const msgDoc = await getDoc(msgRef);
+            if (msgDoc.exists()) {
+                let reactions = msgDoc.data().reactions || { like: [], heart: [], angry: [] };
+                const userReactions = [];
+                if (reactions.like.includes(currentUserId)) userReactions.push('like');
+                if (reactions.heart.includes(currentUserId)) userReactions.push('heart');
+                if (reactions.angry.includes(currentUserId)) userReactions.push('angry');
+                
+                if (userReactions.includes(reactionType)) {
+                    reactions[reactionType] = reactions[reactionType].filter(id => id !== currentUserId);
+                } else {
+                    for (const ur of userReactions) {
+                        reactions[ur] = reactions[ur].filter(id => id !== currentUserId);
+                    }
+                    reactions[reactionType].push(currentUserId);
+                }
+                await updateDoc(msgRef, { reactions });
+                await loadMessages();
+            }
+        }
 
         // ============ ВОПРОСЫ И ОТВЕТЫ ============
         async function loadMessages() {
@@ -221,37 +281,50 @@
                 const querySnapshot = await getDocs(collection(db, "messages"));
                 messages = [];
                 querySnapshot.forEach((doc) => {
-                    messages.push({ id: doc.id, ...doc.data() });
+                    messages.push({ id: doc.id, ...doc.data(), reactions: doc.data().reactions || { like: [], heart: [], angry: [] } });
                 });
                 messages.sort((a, b) => new Date(b.date) - new Date(a.date));
                 renderMessages();
-            } catch (error) {
-                console.error("Ошибка загрузки сообщений:", error);
-            }
+            } catch (error) { console.error("Ошибка загрузки сообщений:", error); }
         }
 
         function renderMessages() {
             const container = document.getElementById('messagesList');
             if (!container) return;
-            
-            if (messages.length === 0) {
-                container.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">Пока нет вопросов. Будьте первым!</div>';
-                return;
-            }
-            
+            if (messages.length === 0) { container.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">Пока нет вопросов. Будьте первым!</div>'; return; }
             container.innerHTML = '';
             messages.forEach(msg => {
+                const reactions = msg.reactions || { like: [], heart: [], angry: [] };
+                const likeCount = reactions.like.length;
+                const heartCount = reactions.heart.length;
+                const angryCount = reactions.angry.length;
+                const userLiked = reactions.like.includes(currentUserId);
+                const userHearted = reactions.heart.includes(currentUserId);
+                const userAngry = reactions.angry.includes(currentUserId);
+                
                 const messageCard = document.createElement('div');
                 messageCard.className = 'message-card';
                 messageCard.innerHTML = `
                     <div class="message-name">👤 ${escapeHtml(msg.name)}</div>
                     <div class="message-date">📅 ${msg.date}</div>
                     <div class="message-question-text">❓ ${escapeHtml(msg.question)}</div>
-                    ${msg.answer ? `<div class="message-answer"><div class="message-answer-label">✅ Ответ администратора:</div>${escapeHtml(msg.answer)}</div>` : '<div class="message-answer" style="background:#fff3cd;"><div class="message-answer-label">⏳ Ожидает ответа...</div></div>'}
+                    ${msg.answer ? `
+                        <div class="message-answer">
+                            <div class="message-answer-label">✅ Ответ администратора:</div>
+                            ${escapeHtml(msg.answer)}
+                            ${msg.visitorReply ? `<div class="visitor-reply"><div class="visitor-reply-label">💬 Ответ посетителя:</div>${escapeHtml(msg.visitorReply)}</div>` : ''}
+                            ${!msg.visitorReply ? `<button class="visitor-reply-btn" onclick="showVisitorReplyPrompt('${msg.id}')">💬 Ответить на ответ</button>` : ''}
+                        </div>
+                    ` : '<div class="message-answer" style="background:#fff3cd;"><div class="message-answer-label">⏳ Ожидает ответа...</div></div>'}
+                    <div class="reactions">
+                        <button class="reaction-btn ${userLiked ? 'active' : ''}" onclick="addMessageReaction('${msg.id}', 'like')">👍 <span class="reaction-count">${likeCount}</span></button>
+                        <button class="reaction-btn ${userHearted ? 'active' : ''}" onclick="addMessageReaction('${msg.id}', 'heart')">❤️ <span class="reaction-count">${heartCount}</span></button>
+                        <button class="reaction-btn ${userAngry ? 'active' : ''}" onclick="addMessageReaction('${msg.id}', 'angry')">😡 <span class="reaction-count">${angryCount}</span></button>
+                    </div>
                     ${isAdmin && isAdminPanelVisible ? `
                         <div class="admin-buttons">
-                            <button class="reply-btn" onclick="showReplyPrompt('${msg.id}')">✏️ Ответить</button>
-                            <button class="delete-btn" onclick="deleteMessage('${msg.id}')">🗑️ Удалить</button>
+                            ${!msg.answer ? `<button class="reply-btn" onclick="showReplyPrompt('${msg.id}')">✏️ Ответить</button>` : `<button class="edit-reply-btn" onclick="showEditReplyPrompt('${msg.id}')">✏️ Редактировать ответ</button>`}
+                            <button class="delete-btn" onclick="deleteMessage('${msg.id}')">🗑️ Удалить вопрос</button>
                         </div>
                     ` : ''}
                 `;
@@ -260,70 +333,69 @@
         }
 
         function toggleAdminPanel() {
-            if (!isAdmin) {
-                showPasswordModal('adminPanel');
-                return;
-            }
+            if (!isAdmin) { showPasswordModal('adminPanel'); return; }
             isAdminPanelVisible = !isAdminPanelVisible;
             const btn = document.getElementById('adminToggleBtn');
-            if (isAdminPanelVisible) {
-                btn.innerHTML = '🔒 Скрыть управление';
-                btn.style.background = 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)';
-            } else {
-                btn.innerHTML = '🔧 Управление сообщениями';
-                btn.style.background = 'linear-gradient(135deg, #28a745 0%, #20c997 100%)';
-            }
+            if (isAdminPanelVisible) { btn.innerHTML = '🔒 Скрыть управление'; btn.style.background = 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)'; }
+            else { btn.innerHTML = '🔧 Управление сообщениями'; btn.style.background = 'linear-gradient(135deg, #28a745 0%, #20c997 100%)'; }
             renderMessages();
         }
 
         async function showReplyPrompt(messageId) {
-            const message = messages.find(m => m.id === messageId);
-            if (!message) return;
-            const answer = prompt('Введите ответ на вопрос:', message.answer || '');
-            if (answer !== null && answer.trim() !== '') {
+            const answer = prompt('Введите ответ на вопрос:');
+            if (answer && answer.trim()) {
                 try {
                     const messageRef = doc(db, "messages", messageId);
                     await updateDoc(messageRef, { answer: answer.trim() });
                     await loadMessages();
                     alert('Ответ сохранён!');
-                } catch (error) {
-                    console.error("Ошибка сохранения ответа:", error);
-                    alert('Ошибка сохранения ответа');
-                }
+                } catch (error) { console.error("Ошибка:", error); alert('Ошибка сохранения ответа'); }
+            }
+        }
+
+        async function showEditReplyPrompt(messageId) {
+            const message = messages.find(m => m.id === messageId);
+            const answer = prompt('Редактировать ответ:', message.answer);
+            if (answer !== null && answer.trim()) {
+                try {
+                    const messageRef = doc(db, "messages", messageId);
+                    await updateDoc(messageRef, { answer: answer.trim() });
+                    await loadMessages();
+                    alert('Ответ обновлён!');
+                } catch (error) { console.error("Ошибка:", error); alert('Ошибка обновления ответа'); }
+            }
+        }
+
+        async function showVisitorReplyPrompt(messageId) {
+            const reply = prompt('Ваш ответ администратору:');
+            if (reply && reply.trim()) {
+                try {
+                    const messageRef = doc(db, "messages", messageId);
+                    await updateDoc(messageRef, { visitorReply: reply.trim() });
+                    await loadMessages();
+                    alert('Ваш ответ отправлен!');
+                } catch (error) { console.error("Ошибка:", error); alert('Ошибка отправки ответа'); }
             }
         }
 
         async function deleteMessage(messageId) {
             if (confirm('Удалить это сообщение навсегда?')) {
-                try {
-                    await deleteDoc(doc(db, "messages", messageId));
-                    await loadMessages();
-                    alert('Сообщение удалено!');
-                } catch (error) {
-                    console.error("Ошибка удаления:", error);
-                    alert('Ошибка удаления');
-                }
+                try { await deleteDoc(doc(db, "messages", messageId)); await loadMessages(); alert('Сообщение удалено!'); }
+                catch (error) { console.error("Ошибка удаления:", error); alert('Ошибка удаления'); }
             }
         }
 
         async function sendQuestion() {
             const name = document.getElementById('visitorName').value.trim();
             const question = document.getElementById('visitorQuestion').value.trim();
-            if (!name || !question) {
-                alert('Заполните имя и вопрос!');
-                return;
-            }
+            if (!name || !question) { alert('Заполните имя и вопрос!'); return; }
             const date = new Date().toISOString().split('T')[0];
             try {
-                await addDoc(collection(db, "messages"), { name, question, answer: "", date });
-                document.getElementById('visitorName').value = '';
-                document.getElementById('visitorQuestion').value = '';
+                await addDoc(collection(db, "messages"), { name, question, answer: "", visitorReply: "", date, reactions: { like: [], heart: [], angry: [] } });
+                document.getElementById('visitorName').value = ''; document.getElementById('visitorQuestion').value = '';
                 await loadMessages();
                 alert('Вопрос отправлен! Администратор ответит в ближайшее время.');
-            } catch (error) {
-                console.error("Ошибка отправки вопроса:", error);
-                alert('Ошибка отправки вопроса');
-            }
+            } catch (error) { console.error("Ошибка отправки вопроса:", error); alert('Ошибка отправки вопроса'); }
         }
 
         function showQuestionsScreen() {
@@ -333,25 +405,18 @@
             document.getElementById('questionsScreen').style.display = 'block';
             isAdminPanelVisible = false;
             const btn = document.getElementById('adminToggleBtn');
-            if (btn) {
-                btn.innerHTML = '🔧 Управление сообщениями';
-                btn.style.background = 'linear-gradient(135deg, #28a745 0%, #20c997 100%)';
-                btn.style.display = isAdmin ? 'block' : 'none';
-            }
+            if (btn) { btn.innerHTML = '🔧 Управление сообщениями'; btn.style.background = 'linear-gradient(135deg, #28a745 0%, #20c997 100%)'; btn.style.display = isAdmin ? 'block' : 'none'; }
             loadMessages();
         }
 
-        function hideQuestionsScreen() {
-            document.getElementById('questionsScreen').style.display = 'none';
-            document.getElementById('mainScreen').style.display = 'block';
-        }
+        function hideQuestionsScreen() { document.getElementById('questionsScreen').style.display = 'none'; document.getElementById('mainScreen').style.display = 'block'; }
 
         // ============ ПОСТЫ ============
         async function loadPosts() {
             try {
                 const querySnapshot = await getDocs(collection(db, "posts"));
                 posts = [];
-                querySnapshot.forEach((doc) => { posts.push({ id: doc.id, ...doc.data() }); });
+                querySnapshot.forEach((doc) => { posts.push({ id: doc.id, ...doc.data(), reactions: doc.data().reactions || { like: [], heart: [], angry: [] } }); });
                 posts.sort((a, b) => new Date(b.date) - new Date(a.date));
                 renderPosts();
             } catch (error) { console.error("Ошибка загрузки постов:", error); }
@@ -363,12 +428,25 @@
             if (posts.length === 0) { container.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">Пока нет постов. Добавьте первый!</div>'; return; }
             container.innerHTML = '';
             posts.forEach(post => {
+                const reactions = post.reactions || { like: [], heart: [], angry: [] };
+                const likeCount = reactions.like.length;
+                const heartCount = reactions.heart.length;
+                const angryCount = reactions.angry.length;
+                const userLiked = reactions.like.includes(currentUserId);
+                const userHearted = reactions.heart.includes(currentUserId);
+                const userAngry = reactions.angry.includes(currentUserId);
+                
                 const postCard = document.createElement('div');
                 postCard.className = 'post-card';
                 postCard.innerHTML = `
                     <div class="post-date">📅 ${post.date}</div>
                     <h3 class="post-title">${escapeHtml(post.title)}</h3>
                     <div class="post-content">${escapeHtml(post.content)}</div>
+                    <div class="post-reactions">
+                        <button class="reaction-btn ${userLiked ? 'active' : ''}" onclick="addPostReaction('${post.id}', 'like')">👍 <span class="reaction-count">${likeCount}</span></button>
+                        <button class="reaction-btn ${userHearted ? 'active' : ''}" onclick="addPostReaction('${post.id}', 'heart')">❤️ <span class="reaction-count">${heartCount}</span></button>
+                        <button class="reaction-btn ${userAngry ? 'active' : ''}" onclick="addPostReaction('${post.id}', 'angry')">😡 <span class="reaction-count">${angryCount}</span></button>
+                    </div>
                     <div class="post-actions" id="post-actions-${post.id}">
                         <button class="edit-btn" onclick="openEditPostModal('${post.id}')">✏️ Редактировать</button>
                         <button class="delete-btn" onclick="deletePost('${post.id}')">🗑️ Удалить</button>
@@ -386,7 +464,7 @@
             const date = new Date().toISOString().split('T')[0];
             try {
                 if (editingPostId) { const postRef = doc(db, "posts", editingPostId); await updateDoc(postRef, { title, content, date }); }
-                else { await addDoc(collection(db, "posts"), { title, content, date }); }
+                else { await addDoc(collection(db, "posts"), { title, content, date, reactions: { like: [], heart: [], angry: [] } }); }
                 await loadPosts(); closePostModal(); alert(editingPostId ? 'Пост обновлён!' : 'Пост добавлен!');
             } catch (error) { console.error("Ошибка сохранения поста:", error); alert('Ошибка сохранения поста'); }
         }
@@ -426,10 +504,7 @@
             if (addBtn) addBtn.style.display = isAdmin ? 'block' : 'none';
         }
 
-        function hidePostsScreen() {
-            document.getElementById('postsScreen').style.display = 'none';
-            document.getElementById('mainScreen').style.display = 'block';
-        }
+        function hidePostsScreen() { document.getElementById('postsScreen').style.display = 'none'; document.getElementById('mainScreen').style.display = 'block'; }
 
         // ============ ОСТАЛЬНЫЕ ФУНКЦИИ ============
         async function saveToFirebase(dataType, value) {
@@ -540,11 +615,7 @@
             if (isAdmin) document.querySelectorAll('.delete-img-btn').forEach(btn => btn.style.display = 'block');
         }
 
-        function hideDetailScreen() {
-            document.getElementById('detailScreen').style.display = 'none';
-            document.getElementById('mainScreen').style.display = 'block';
-            isTextEditingEnabled = false;
-        }
+        function hideDetailScreen() { document.getElementById('detailScreen').style.display = 'none'; document.getElementById('mainScreen').style.display = 'block'; isTextEditingEnabled = false; }
 
         function enableTextEditing() {
             if (!isAdmin) { showPasswordModal('editText'); return; }
@@ -676,7 +747,11 @@
         window.sendQuestion = sendQuestion;
         window.deleteMessage = deleteMessage;
         window.showReplyPrompt = showReplyPrompt;
+        window.showEditReplyPrompt = showEditReplyPrompt;
+        window.showVisitorReplyPrompt = showVisitorReplyPrompt;
         window.toggleAdminPanel = toggleAdminPanel;
+        window.addPostReaction = addPostReaction;
+        window.addMessageReaction = addMessageReaction;
 
         init();
     </script>
