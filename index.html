@@ -42,10 +42,12 @@
         .posts-screen, .questions-screen { display: none; background: white; border-radius: 20px; padding: 30px; margin-top: 30px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
         .posts-header, .questions-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; flex-wrap: wrap; gap: 15px; }
         .posts-header h2, .questions-header h2 { color: #333; font-size: 28px; }
+        .name-field-wrapper { display: flex; gap: 10px; align-items: center; margin-bottom: 15px; }
+        .name-field-wrapper input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-family: inherit; font-size: 16px; }
+        .name-field-wrapper button { background: #667eea; color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; }
         .question-form { background: #f8f9fa; padding: 25px; border-radius: 15px; margin-bottom: 40px; }
         .question-form h3 { margin-bottom: 20px; color: #333; }
-        .question-form input, .question-form textarea { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 8px; font-family: inherit; font-size: 16px; }
-        .question-form textarea { min-height: 100px; resize: vertical; }
+        .question-form textarea { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 8px; font-family: inherit; font-size: 16px; resize: vertical; min-height: 100px; }
         .question-form button { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; border: none; padding: 12px 30px; border-radius: 8px; cursor: pointer; font-size: 16px; }
         .message-card { background: #f8f9fa; border-radius: 15px; padding: 20px; margin-bottom: 20px; border-left: 4px solid #667eea; }
         .message-name { font-weight: bold; color: #667eea; margin-bottom: 5px; }
@@ -111,7 +113,7 @@
         .fullscreen-modal .close-fullscreen { position: absolute; top: 20px; right: 40px; color: white; font-size: 40px; cursor: pointer; }
         .view-mode-badge { position: fixed; bottom: 20px; right: 20px; background: rgba(0,0,0,0.7); color: white; padding: 5px 15px; border-radius: 20px; font-size: 12px; z-index: 999; }
         .add-post-btn, .admin-toggle-btn { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; display: none; }
-        @media (max-width: 768px) { .main-screen, .detail-screen, .posts-screen, .questions-screen { margin: 10px; } .gallery { grid-template-columns: 1fr; } .main-photo-container { width: 150px; height: 150px; } .posts-header, .questions-header { flex-direction: column; text-align: center; } }
+        @media (max-width: 768px) { .main-screen, .detail-screen, .posts-screen, .questions-screen { margin: 10px; } .gallery { grid-template-columns: 1fr; } .main-photo-container { width: 150px; height: 150px; } .posts-header, .questions-header { flex-direction: column; text-align: center; } .name-field-wrapper { flex-direction: column; } .name-field-wrapper button { width: 100%; } }
     </style>
 </head>
 <body>
@@ -198,9 +200,12 @@
                 <h2>💬 Вопросы и ответы</h2>
                 <button id="adminToggleBtn" class="admin-toggle-btn" onclick="toggleAdminPanel()">🔧 Управление сообщениями</button>
             </div>
-            <div class="question-form" id="askForm">
+            <div class="question-form">
                 <h3>📝 Задать вопрос</h3>
-                <input type="text" id="visitorName" placeholder="Ваше имя" maxlength="50">
+                <div class="name-field-wrapper">
+                    <input type="text" id="visitorName" placeholder="Ваше имя" maxlength="50">
+                    <button onclick="changeVisitorName()">✏️ Сменить имя</button>
+                </div>
                 <textarea id="visitorQuestion" placeholder="Ваш вопрос..."></textarea>
                 <button onclick="sendQuestion()">📨 Отправить вопрос</button>
             </div>
@@ -238,9 +243,19 @@
         let currentUserId = localStorage.getItem('userId');
         if (!currentUserId) { currentUserId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9); localStorage.setItem('userId', currentUserId); }
         
-        document.getElementById('visitorName').value = currentVisitorName;
+        const nameInput = document.getElementById('visitorName');
+        if (nameInput) nameInput.value = currentVisitorName;
 
-        // ============ СОРТИРОВКА РЕАКЦИЙ ПО КОЛИЧЕСТВУ ============
+        function changeVisitorName() {
+            const newName = prompt('Введите ваше имя:', currentVisitorName || 'Посетитель');
+            if (newName && newName.trim()) {
+                currentVisitorName = newName.trim();
+                localStorage.setItem('visitorName', currentVisitorName);
+                if (nameInput) nameInput.value = currentVisitorName;
+                alert(`Имя изменено на "${currentVisitorName}"`);
+            }
+        }
+
         function sortReactionsByCount(reactions) {
             const counts = [
                 { type: 'like', count: reactions.like?.length || 0 },
@@ -251,7 +266,7 @@
             return counts.map(c => c.type);
         }
 
-        async function addPostReaction(postId, reactionType, event) {
+        async function addPostReaction(postId, reactionType) {
             const postRef = doc(db, "posts", postId);
             const postDoc = await getDoc(postRef);
             if (postDoc.exists()) {
@@ -275,7 +290,7 @@
             }
         }
 
-        async function addMessageReaction(messageId, reactionType, event) {
+        async function addMessageReaction(messageId, reactionType) {
             const msgRef = doc(db, "messages", messageId);
             const msgDoc = await getDoc(msgRef);
             if (msgDoc.exists()) {
@@ -299,7 +314,6 @@
             }
         }
 
-        // ============ ВОПРОСЫ И БЕСКОНЕЧНЫЕ ОТВЕТЫ ============
         async function loadMessages() {
             try {
                 const querySnapshot = await getDocs(collection(db, "messages"));
@@ -326,8 +340,8 @@
                         <div class="reply-text">${escapeHtml(reply.text)}</div>
                         <div class="reply-date">📅 ${reply.date}</div>
                         <div class="reply-actions">
-                            <button class="reply-to-reply-btn" onclick="showReplyToReplyPrompt('${reply.id}', '${reply.messageId}')">💬 Ответить</button>
-                            ${(isAdmin || reply.authorId === currentUserId) ? `<button class="delete-reply-btn" onclick="deleteReply('${reply.id}', '${reply.messageId}')">🗑️ Удалить</button>` : ''}
+                            <button class="reply-to-reply-btn" onclick="window.showReplyToReplyPrompt('${reply.id}', '${reply.messageId}')">💬 Ответить</button>
+                            ${(isAdmin || reply.authorId === currentUserId) ? `<button class="delete-reply-btn" onclick="window.deleteReply('${reply.id}', '${reply.messageId}')">🗑️ Удалить</button>` : ''}
                         </div>
                         ${renderReplyTree(replies, reply.id, level + 1, collapsed)}
                     </div>
@@ -355,9 +369,9 @@
                 
                 let reactionsHtml = '<div class="reactions">';
                 for (const rt of reactionOrder) {
-                    if (rt === 'like') reactionsHtml += `<button class="reaction-btn ${userLiked ? 'active' : ''}" onclick="addMessageReaction('${msg.id}', 'like', event)">👍 <span class="reaction-count">${likeCount}</span></button>`;
-                    else if (rt === 'heart') reactionsHtml += `<button class="reaction-btn ${userHearted ? 'active' : ''}" onclick="addMessageReaction('${msg.id}', 'heart', event)">❤️ <span class="reaction-count">${heartCount}</span></button>`;
-                    else if (rt === 'angry') reactionsHtml += `<button class="reaction-btn ${userAngry ? 'active' : ''}" onclick="addMessageReaction('${msg.id}', 'angry', event)">😡 <span class="reaction-count">${angryCount}</span></button>`;
+                    if (rt === 'like') reactionsHtml += `<button class="reaction-btn ${userLiked ? 'active' : ''}" onclick="addMessageReaction('${msg.id}', 'like')">👍 <span class="reaction-count">${likeCount}</span></button>`;
+                    else if (rt === 'heart') reactionsHtml += `<button class="reaction-btn ${userHearted ? 'active' : ''}" onclick="addMessageReaction('${msg.id}', 'heart')">❤️ <span class="reaction-count">${heartCount}</span></button>`;
+                    else if (rt === 'angry') reactionsHtml += `<button class="reaction-btn ${userAngry ? 'active' : ''}" onclick="addMessageReaction('${msg.id}', 'angry')">😡 <span class="reaction-count">${angryCount}</span></button>`;
                 }
                 reactionsHtml += '</div>';
                 
@@ -366,7 +380,7 @@
                 if (hasReplies) {
                     const collapsedState = localStorage.getItem(`collapsed_${msg.id}`) === 'true';
                     replyTreeHtml = `
-                        <button class="toggle-replies-btn" onclick="toggleReplies('${msg.id}')">${collapsedState ? '📂 Показать ответы' : '📁 Свернуть ответы'}</button>
+                        <button class="toggle-replies-btn" onclick="window.toggleReplies('${msg.id}')">${collapsedState ? '📂 Показать ответы' : '📁 Свернуть ответы'}</button>
                         ${renderReplyTree(msg.replies, null, 0, collapsedState)}
                     `;
                 }
@@ -378,13 +392,13 @@
                     <div class="message-date">📅 ${msg.date}</div>
                     <div class="message-question-text">❓ ${escapeHtml(msg.question)}</div>
                     <div class="reply-actions" style="margin-top: 10px;">
-                        <button class="reply-to-reply-btn" onclick="showReplyToQuestionPrompt('${msg.id}')">💬 Ответить на вопрос</button>
+                        <button class="reply-to-reply-btn" onclick="window.showReplyToQuestionPrompt('${msg.id}')">💬 Ответить на вопрос</button>
                     </div>
                     ${replyTreeHtml}
                     ${reactionsHtml}
                     ${isAdmin && isAdminPanelVisible ? `
                         <div class="admin-buttons">
-                            <button class="delete-btn" onclick="deleteMessage('${msg.id}')">🗑️ Удалить вопрос</button>
+                            <button class="delete-btn" onclick="window.deleteMessage('${msg.id}')">🗑️ Удалить вопрос</button>
                         </div>
                     ` : ''}
                 `;
@@ -392,15 +406,14 @@
             }
         }
 
-        function toggleReplies(messageId) {
+        window.toggleReplies = function(messageId) {
             const current = localStorage.getItem(`collapsed_${messageId}`) === 'true';
             localStorage.setItem(`collapsed_${messageId}`, (!current).toString());
             renderMessages();
-        }
+        };
 
-        async function showReplyToQuestionPrompt(messageId) {
-            const visitorName = document.getElementById('visitorName').value.trim();
-            if (!visitorName && !isAdmin) {
+        window.showReplyToQuestionPrompt = async function(messageId) {
+            if (!currentVisitorName && !isAdmin) {
                 alert('Введите ваше имя в поле выше!');
                 return;
             }
@@ -412,7 +425,7 @@
                     messageId: messageId,
                     parentId: null,
                     text: text.trim(),
-                    authorName: isAdmin ? ADMIN_NAME : visitorName,
+                    authorName: isAdmin ? ADMIN_NAME : currentVisitorName,
                     authorId: currentUserId,
                     isAdmin: isAdmin,
                     date: date
@@ -426,11 +439,10 @@
                     alert('Ответ добавлен!');
                 }
             }
-        }
+        };
 
-        async function showReplyToReplyPrompt(replyId, messageId) {
-            const visitorName = document.getElementById('visitorName').value.trim();
-            if (!visitorName && !isAdmin) {
+        window.showReplyToReplyPrompt = async function(replyId, messageId) {
+            if (!currentVisitorName && !isAdmin) {
                 alert('Введите ваше имя в поле выше!');
                 return;
             }
@@ -442,7 +454,7 @@
                     messageId: messageId,
                     parentId: replyId,
                     text: text.trim(),
-                    authorName: isAdmin ? ADMIN_NAME : visitorName,
+                    authorName: isAdmin ? ADMIN_NAME : currentVisitorName,
                     authorId: currentUserId,
                     isAdmin: isAdmin,
                     date: date
@@ -456,9 +468,9 @@
                     alert('Ответ добавлен!');
                 }
             }
-        }
+        };
 
-        async function deleteReply(replyId, messageId) {
+        window.deleteReply = async function(replyId, messageId) {
             if (confirm('Удалить этот ответ?')) {
                 const msgRef = doc(db, "messages", messageId);
                 const msgDoc = await getDoc(msgRef);
@@ -470,41 +482,38 @@
                     alert('Ответ удалён!');
                 }
             }
-        }
+        };
 
-        function toggleAdminPanel() {
+        window.toggleAdminPanel = function() {
             if (!isAdmin) { showPasswordModal('adminPanel'); return; }
             isAdminPanelVisible = !isAdminPanelVisible;
             const btn = document.getElementById('adminToggleBtn');
             if (isAdminPanelVisible) { btn.innerHTML = '🔒 Скрыть управление'; btn.style.background = 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)'; }
             else { btn.innerHTML = '🔧 Управление сообщениями'; btn.style.background = 'linear-gradient(135deg, #28a745 0%, #20c997 100%)'; }
             renderMessages();
-        }
+        };
 
-        async function deleteMessage(messageId) {
+        window.deleteMessage = async function(messageId) {
             if (confirm('Удалить этот вопрос со всеми ответами?')) {
                 try { await deleteDoc(doc(db, "messages", messageId)); await loadMessages(); alert('Вопрос удалён!'); }
                 catch (error) { console.error("Ошибка удаления:", error); alert('Ошибка удаления'); }
             }
-        }
+        };
 
-        async function sendQuestion() {
-            const name = document.getElementById('visitorName').value.trim();
+        window.sendQuestion = async function() {
+            const name = currentVisitorName;
             const question = document.getElementById('visitorQuestion').value.trim();
-            if (!name || !question) { alert('Заполните имя и вопрос!'); return; }
-            localStorage.setItem('visitorName', name);
-            currentVisitorName = name;
+            if (!name || !question) { alert('Введите имя и вопрос!'); return; }
             const date = new Date().toISOString().split('T')[0];
             try {
                 await addDoc(collection(db, "messages"), { name, question, date, replies: [], reactions: { like: [], heart: [], angry: [] }, reactionOrder: ['like', 'heart', 'angry'] });
-                document.getElementById('visitorName').value = name;
                 document.getElementById('visitorQuestion').value = '';
                 await loadMessages();
                 alert('Вопрос отправлен!');
             } catch (error) { console.error("Ошибка отправки вопроса:", error); alert('Ошибка отправки вопроса'); }
-        }
+        };
 
-        function showQuestionsScreen() {
+        window.showQuestionsScreen = function() {
             document.getElementById('mainScreen').style.display = 'none';
             document.getElementById('detailScreen').style.display = 'none';
             document.getElementById('postsScreen').style.display = 'none';
@@ -513,11 +522,10 @@
             const btn = document.getElementById('adminToggleBtn');
             if (btn) { btn.innerHTML = '🔧 Управление сообщениями'; btn.style.background = 'linear-gradient(135deg, #28a745 0%, #20c997 100%)'; btn.style.display = isAdmin ? 'block' : 'none'; }
             loadMessages();
-        }
+        };
 
         function hideQuestionsScreen() { document.getElementById('questionsScreen').style.display = 'none'; document.getElementById('mainScreen').style.display = 'block'; }
 
-        // ============ ПОСТЫ ============
         async function loadPosts() {
             try {
                 const querySnapshot = await getDocs(collection(db, "posts"));
@@ -545,9 +553,9 @@
                 
                 let reactionsHtml = '<div class="post-reactions">';
                 for (const rt of reactionOrder) {
-                    if (rt === 'like') reactionsHtml += `<button class="reaction-btn ${userLiked ? 'active' : ''}" onclick="addPostReaction('${post.id}', 'like', event)">👍 <span class="reaction-count">${likeCount}</span></button>`;
-                    else if (rt === 'heart') reactionsHtml += `<button class="reaction-btn ${userHearted ? 'active' : ''}" onclick="addPostReaction('${post.id}', 'heart', event)">❤️ <span class="reaction-count">${heartCount}</span></button>`;
-                    else if (rt === 'angry') reactionsHtml += `<button class="reaction-btn ${userAngry ? 'active' : ''}" onclick="addPostReaction('${post.id}', 'angry', event)">😡 <span class="reaction-count">${angryCount}</span></button>`;
+                    if (rt === 'like') reactionsHtml += `<button class="reaction-btn ${userLiked ? 'active' : ''}" onclick="addPostReaction('${post.id}', 'like')">👍 <span class="reaction-count">${likeCount}</span></button>`;
+                    else if (rt === 'heart') reactionsHtml += `<button class="reaction-btn ${userHearted ? 'active' : ''}" onclick="addPostReaction('${post.id}', 'heart')">❤️ <span class="reaction-count">${heartCount}</span></button>`;
+                    else if (rt === 'angry') reactionsHtml += `<button class="reaction-btn ${userAngry ? 'active' : ''}" onclick="addPostReaction('${post.id}', 'angry')">😡 <span class="reaction-count">${angryCount}</span></button>`;
                 }
                 reactionsHtml += '</div>';
                 
@@ -617,7 +625,6 @@
 
         function hidePostsScreen() { document.getElementById('postsScreen').style.display = 'none'; document.getElementById('mainScreen').style.display = 'block'; }
 
-        // ============ ОСТАЛЬНЫЕ ФУНКЦИИ ============
         async function saveToFirebase(dataType, value) {
             if (!isAdmin) return;
             try { const docRef = doc(db, "businessData", "main"); await setDoc(docRef, { [dataType]: value }, { merge: true }); alert("Изменения сохранены и видны всем!"); }
@@ -832,6 +839,9 @@
             renderGallery();
         }
 
+        window.changeVisitorName = changeVisitorName;
+        window.addPostReaction = addPostReaction;
+        window.addMessageReaction = addMessageReaction;
         window.checkAdminPassword = checkAdminPassword;
         window.closePasswordModal = closePasswordModal;
         window.showPasswordModal = showPasswordModal;
@@ -862,8 +872,6 @@
         window.deleteReply = deleteReply;
         window.toggleReplies = toggleReplies;
         window.toggleAdminPanel = toggleAdminPanel;
-        window.addPostReaction = addPostReaction;
-        window.addMessageReaction = addMessageReaction;
 
         init();
     </script>
