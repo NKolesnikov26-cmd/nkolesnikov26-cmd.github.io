@@ -51,31 +51,32 @@
         .message-name { font-weight: bold; color: #667eea; margin-bottom: 5px; }
         .message-date { font-size: 12px; color: #999; margin-bottom: 10px; }
         .message-question-text { color: #333; margin-bottom: 15px; padding: 10px; background: white; border-radius: 10px; }
-        .message-answer { background: #e8f5e9; padding: 15px; border-radius: 10px; margin-top: 15px; }
-        .message-answer-label { font-weight: bold; color: #2e7d32; margin-bottom: 8px; }
-        .visitor-reply { background: #e3f2fd; padding: 12px; border-radius: 10px; margin-top: 12px; margin-left: 20px; }
-        .visitor-reply-label { font-weight: bold; color: #1565c0; margin-bottom: 6px; }
-        .admin-reply-to-visitor { background: #fff3e0; padding: 12px; border-radius: 10px; margin-top: 12px; margin-left: 40px; border-left: 3px solid #ff9800; }
-        .admin-reply-to-visitor-label { font-weight: bold; color: #e65100; margin-bottom: 6px; }
+        .reply-thread { margin-top: 15px; margin-left: 20px; }
+        .reply-item { background: #f1f8e9; border-radius: 12px; padding: 12px; margin-bottom: 10px; border-left: 3px solid #4caf50; }
+        .reply-author { font-weight: bold; font-size: 13px; margin-bottom: 5px; }
+        .reply-author.admin { color: #e65100; }
+        .reply-author.visitor { color: #1565c0; }
+        .reply-text { color: #333; margin-bottom: 8px; }
+        .reply-date { font-size: 11px; color: #999; margin-bottom: 8px; }
+        .reply-actions { display: flex; gap: 10px; margin-top: 5px; }
+        .reply-actions button { background: none; border: none; font-size: 12px; cursor: pointer; padding: 4px 8px; border-radius: 5px; }
+        .reply-actions .reply-to-reply-btn { background: #17a2b8; color: white; }
+        .reply-actions .delete-reply-btn { background: #dc3545; color: white; }
         .admin-buttons { margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap; }
         .admin-buttons button { padding: 8px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; }
         .admin-buttons .reply-btn { background: #667eea; color: white; }
         .admin-buttons .edit-reply-btn { background: #ffc107; color: #333; }
         .admin-buttons .delete-btn { background: #dc3545; color: white; }
-        .admin-buttons .reply-to-visitor-btn { background: #ff9800; color: white; }
-        .visitor-reply-btn, .visitor-reply-to-admin-btn { background: #17a2b8; color: white; border: none; padding: 6px 15px; border-radius: 5px; cursor: pointer; font-size: 12px; margin-top: 10px; }
-        .reactions { display: flex; gap: 15px; margin-top: 15px; padding-top: 10px; border-top: 1px solid #ddd; overflow: hidden; }
-        .reaction-btn { background: none; border: none; font-size: 20px; cursor: pointer; padding: 5px 10px; border-radius: 20px; transition: all 0.3s ease; display: inline-block; }
-        .reaction-btn:hover { background: #e0e0e0; transform: scale(1.1); }
+        .reactions { display: flex; gap: 15px; margin-top: 15px; padding-top: 10px; border-top: 1px solid #ddd; }
+        .reaction-btn { background: none; border: none; font-size: 20px; cursor: pointer; padding: 5px 10px; border-radius: 20px; transition: all 0.2s; }
+        .reaction-btn:hover { background: #e0e0e0; transform: scale(1.05); }
         .reaction-btn.active { background: #667eea; color: white; }
         .reaction-count { font-size: 14px; margin-left: 5px; color: #666; }
-        @keyframes slideToFront { 0% { transform: translateX(0); opacity: 0.7; } 100% { transform: translateX(-10px); opacity: 1; } }
-        .reaction-slide { animation: slideToFront 0.3s ease-out; }
         .post-card { background: #f8f9fa; border-radius: 15px; padding: 20px; margin-bottom: 20px; }
         .post-date { color: #999; font-size: 12px; margin-bottom: 10px; }
         .post-title { color: #333; font-size: 20px; margin-bottom: 10px; }
         .post-content { color: #666; line-height: 1.5; margin-bottom: 15px; }
-        .post-reactions { display: flex; gap: 15px; margin-top: 15px; padding-top: 10px; border-top: 1px solid #ddd; overflow: hidden; }
+        .post-reactions { display: flex; gap: 15px; margin-top: 15px; padding-top: 10px; border-top: 1px solid #ddd; }
         .post-actions { display: none; gap: 10px; margin-top: 15px; }
         .post-actions button { background: #6c757d; color: white; border: none; padding: 5px 15px; border-radius: 5px; cursor: pointer; }
         .post-actions button.delete-btn { background: #dc3545; }
@@ -235,26 +236,12 @@
         let currentUserId = localStorage.getItem('userId');
         if (!currentUserId) { currentUserId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9); localStorage.setItem('userId', currentUserId); }
 
-        // ============ АНИМАЦИЯ РЕАКЦИЙ ============
-        function animateReaction(buttonElement) {
-            buttonElement.classList.add('reaction-slide');
-            setTimeout(() => { buttonElement.classList.remove('reaction-slide'); }, 300);
-            const parent = buttonElement.parentElement;
-            const buttons = Array.from(parent.children);
-            const index = buttons.indexOf(buttonElement);
-            if (index > 0) {
-                parent.insertBefore(buttonElement, parent.firstChild);
-            }
-        }
-
-        // ============ РЕАКЦИИ НА ПОСТЫ ============
+        // ============ РЕАКЦИИ С СОХРАНЕНИЕМ ПОРЯДКА ============
         async function addPostReaction(postId, reactionType, event) {
-            const btn = event.currentTarget;
-            animateReaction(btn);
             const postRef = doc(db, "posts", postId);
             const postDoc = await getDoc(postRef);
             if (postDoc.exists()) {
-                let reactions = postDoc.data().reactions || { like: [], heart: [], angry: [] };
+                let reactions = postDoc.data().reactions || { like: [], heart: [], angry: [], order: ['like', 'heart', 'angry'] };
                 const userReactions = [];
                 if (reactions.like.includes(currentUserId)) userReactions.push('like');
                 if (reactions.heart.includes(currentUserId)) userReactions.push('heart');
@@ -262,25 +249,27 @@
                 
                 if (userReactions.includes(reactionType)) {
                     reactions[reactionType] = reactions[reactionType].filter(id => id !== currentUserId);
+                    const orderIndex = reactions.order.indexOf(reactionType);
+                    if (orderIndex !== -1) reactions.order.splice(orderIndex, 1);
                 } else {
                     for (const ur of userReactions) {
                         reactions[ur] = reactions[ur].filter(id => id !== currentUserId);
+                        const orderIndex = reactions.order.indexOf(ur);
+                        if (orderIndex !== -1) reactions.order.splice(orderIndex, 1);
                     }
                     reactions[reactionType].push(currentUserId);
+                    reactions.order.unshift(reactionType);
                 }
                 await updateDoc(postRef, { reactions });
                 await loadPosts();
             }
         }
 
-        // ============ РЕАКЦИИ НА ВОПРОСЫ ============
         async function addMessageReaction(messageId, reactionType, event) {
-            const btn = event.currentTarget;
-            animateReaction(btn);
             const msgRef = doc(db, "messages", messageId);
             const msgDoc = await getDoc(msgRef);
             if (msgDoc.exists()) {
-                let reactions = msgDoc.data().reactions || { like: [], heart: [], angry: [] };
+                let reactions = msgDoc.data().reactions || { like: [], heart: [], angry: [], order: ['like', 'heart', 'angry'] };
                 const userReactions = [];
                 if (reactions.like.includes(currentUserId)) userReactions.push('like');
                 if (reactions.heart.includes(currentUserId)) userReactions.push('heart');
@@ -288,28 +277,58 @@
                 
                 if (userReactions.includes(reactionType)) {
                     reactions[reactionType] = reactions[reactionType].filter(id => id !== currentUserId);
+                    const orderIndex = reactions.order.indexOf(reactionType);
+                    if (orderIndex !== -1) reactions.order.splice(orderIndex, 1);
                 } else {
                     for (const ur of userReactions) {
                         reactions[ur] = reactions[ur].filter(id => id !== currentUserId);
+                        const orderIndex = reactions.order.indexOf(ur);
+                        if (orderIndex !== -1) reactions.order.splice(orderIndex, 1);
                     }
                     reactions[reactionType].push(currentUserId);
+                    reactions.order.unshift(reactionType);
                 }
                 await updateDoc(msgRef, { reactions });
                 await loadMessages();
             }
         }
 
-        // ============ ВОПРОСЫ И ОТВЕТЫ ============
+        // ============ ВОПРОСЫ И БЕСКОНЕЧНЫЕ ОТВЕТЫ ============
         async function loadMessages() {
             try {
                 const querySnapshot = await getDocs(collection(db, "messages"));
                 messages = [];
                 querySnapshot.forEach((doc) => {
-                    messages.push({ id: doc.id, ...doc.data(), reactions: doc.data().reactions || { like: [], heart: [], angry: [] } });
+                    messages.push({ id: doc.id, ...doc.data(), reactions: doc.data().reactions || { like: [], heart: [], angry: [], order: ['like', 'heart', 'angry'] } });
                 });
                 messages.sort((a, b) => new Date(b.date) - new Date(a.date));
                 renderMessages();
             } catch (error) { console.error("Ошибка загрузки сообщений:", error); }
+        }
+
+        function renderReplyTree(replies, parentId = null, level = 0) {
+            const threadReplies = replies.filter(r => r.parentId === parentId);
+            if (threadReplies.length === 0) return '';
+            
+            let html = '<div class="reply-thread" style="margin-left: ' + Math.min(level * 20, 60) + 'px;">';
+            for (const reply of threadReplies) {
+                const authorClass = reply.isAdmin ? 'admin' : 'visitor';
+                const authorName = reply.isAdmin ? '👑 Администратор' : '💬 ' + escapeHtml(reply.authorName);
+                html += `
+                    <div class="reply-item" data-reply-id="${reply.id}">
+                        <div class="reply-author ${authorClass}">${authorName}</div>
+                        <div class="reply-text">${escapeHtml(reply.text)}</div>
+                        <div class="reply-date">📅 ${reply.date}</div>
+                        <div class="reply-actions">
+                            <button class="reply-to-reply-btn" onclick="showReplyToReplyPrompt('${reply.id}', '${reply.messageId}')">💬 Ответить</button>
+                            ${(isAdmin || reply.authorId === currentUserId) ? `<button class="delete-reply-btn" onclick="deleteReply('${reply.id}', '${reply.messageId}')">🗑️ Удалить</button>` : ''}
+                        </div>
+                        ${renderReplyTree(replies, reply.id, level + 1)}
+                    </div>
+                `;
+            }
+            html += '</div>';
+            return html;
         }
 
         function renderMessages() {
@@ -317,54 +336,114 @@
             if (!container) return;
             if (messages.length === 0) { container.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">Пока нет вопросов. Будьте первым!</div>'; return; }
             container.innerHTML = '';
-            messages.forEach(msg => {
-                const reactions = msg.reactions || { like: [], heart: [], angry: [] };
+            
+            for (const msg of messages) {
+                const reactions = msg.reactions || { like: [], heart: [], angry: [], order: ['like', 'heart', 'angry'] };
                 const likeCount = reactions.like.length;
                 const heartCount = reactions.heart.length;
                 const angryCount = reactions.angry.length;
                 const userLiked = reactions.like.includes(currentUserId);
                 const userHearted = reactions.heart.includes(currentUserId);
                 const userAngry = reactions.angry.includes(currentUserId);
+                const reactionOrder = reactions.order || ['like', 'heart', 'angry'];
                 
                 const messageCard = document.createElement('div');
                 messageCard.className = 'message-card';
+                
+                let reactionsHtml = '<div class="reactions">';
+                for (const rt of reactionOrder) {
+                    if (rt === 'like') reactionsHtml += `<button class="reaction-btn ${userLiked ? 'active' : ''}" onclick="addMessageReaction('${msg.id}', 'like', event)">👍 <span class="reaction-count">${likeCount}</span></button>`;
+                    else if (rt === 'heart') reactionsHtml += `<button class="reaction-btn ${userHearted ? 'active' : ''}" onclick="addMessageReaction('${msg.id}', 'heart', event)">❤️ <span class="reaction-count">${heartCount}</span></button>`;
+                    else if (rt === 'angry') reactionsHtml += `<button class="reaction-btn ${userAngry ? 'active' : ''}" onclick="addMessageReaction('${msg.id}', 'angry', event)">😡 <span class="reaction-count">${angryCount}</span></button>`;
+                }
+                reactionsHtml += '</div>';
+                
+                let replyTreeHtml = '';
+                if (msg.replies && msg.replies.length > 0) {
+                    replyTreeHtml = renderReplyTree(msg.replies);
+                }
+                
                 messageCard.innerHTML = `
                     <div class="message-name">👤 ${escapeHtml(msg.name)}</div>
                     <div class="message-date">📅 ${msg.date}</div>
                     <div class="message-question-text">❓ ${escapeHtml(msg.question)}</div>
-                    ${msg.answer ? `
-                        <div class="message-answer">
-                            <div class="message-answer-label">✅ Ответ администратора:</div>
-                            ${escapeHtml(msg.answer)}
-                            ${msg.visitorReply ? `
-                                <div class="visitor-reply">
-                                    <div class="visitor-reply-label">💬 Ответ посетителя:</div>
-                                    ${escapeHtml(msg.visitorReply)}
-                                    ${msg.adminReplyToVisitor ? `
-                                        <div class="admin-reply-to-visitor">
-                                            <div class="admin-reply-to-visitor-label">👑 Ответ администратора:</div>
-                                            ${escapeHtml(msg.adminReplyToVisitor)}
-                                        </div>
-                                    ` : (isAdmin && isAdminPanelVisible ? `<button class="visitor-reply-to-admin-btn" onclick="showAdminReplyToVisitorPrompt('${msg.id}')">👑 Ответить администратору</button>` : '')}
-                                    ${!msg.adminReplyToVisitor && !(isAdmin && isAdminPanelVisible) ? '' : ''}
-                                </div>
-                            ` : (isAdmin && isAdminPanelVisible ? `<button class="visitor-reply-btn" onclick="showVisitorReplyPrompt('${msg.id}')">💬 Ответить на ответ</button>` : '')}
-                        </div>
-                    ` : '<div class="message-answer" style="background:#fff3cd;"><div class="message-answer-label">⏳ Ожидает ответа...</div></div>'}
-                    <div class="reactions" id="reactions-${msg.id}">
-                        <button class="reaction-btn ${userLiked ? 'active' : ''}" onclick="addMessageReaction('${msg.id}', 'like', event)">👍 <span class="reaction-count">${likeCount}</span></button>
-                        <button class="reaction-btn ${userHearted ? 'active' : ''}" onclick="addMessageReaction('${msg.id}', 'heart', event)">❤️ <span class="reaction-count">${heartCount}</span></button>
-                        <button class="reaction-btn ${userAngry ? 'active' : ''}" onclick="addMessageReaction('${msg.id}', 'angry', event)">😡 <span class="reaction-count">${angryCount}</span></button>
+                    <div class="reply-actions" style="margin-top: 10px;">
+                        <button class="reply-to-reply-btn" onclick="showReplyToQuestionPrompt('${msg.id}')">💬 Ответить на вопрос</button>
                     </div>
+                    ${replyTreeHtml}
+                    ${reactionsHtml}
                     ${isAdmin && isAdminPanelVisible ? `
                         <div class="admin-buttons">
-                            ${!msg.answer ? `<button class="reply-btn" onclick="showReplyPrompt('${msg.id}')">✏️ Ответить</button>` : `<button class="edit-reply-btn" onclick="showEditReplyPrompt('${msg.id}')">✏️ Редактировать ответ</button>`}
                             <button class="delete-btn" onclick="deleteMessage('${msg.id}')">🗑️ Удалить вопрос</button>
                         </div>
                     ` : ''}
                 `;
                 container.appendChild(messageCard);
-            });
+            }
+        }
+
+        async function showReplyToQuestionPrompt(messageId) {
+            const text = prompt('Ваш ответ на вопрос:');
+            if (text && text.trim()) {
+                const date = new Date().toISOString().split('T')[0];
+                const newReply = {
+                    id: Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+                    messageId: messageId,
+                    parentId: null,
+                    text: text.trim(),
+                    authorName: isAdmin ? 'Администратор' : (document.getElementById('visitorName')?.value.trim() || 'Посетитель'),
+                    authorId: currentUserId,
+                    isAdmin: isAdmin,
+                    date: date
+                };
+                const msgRef = doc(db, "messages", messageId);
+                const msgDoc = await getDoc(msgRef);
+                if (msgDoc.exists()) {
+                    const existingReplies = msgDoc.data().replies || [];
+                    await updateDoc(msgRef, { replies: [...existingReplies, newReply] });
+                    await loadMessages();
+                    alert('Ответ добавлен!');
+                }
+            }
+        }
+
+        async function showReplyToReplyPrompt(replyId, messageId) {
+            const text = prompt('Ваш ответ:');
+            if (text && text.trim()) {
+                const date = new Date().toISOString().split('T')[0];
+                const newReply = {
+                    id: Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+                    messageId: messageId,
+                    parentId: replyId,
+                    text: text.trim(),
+                    authorName: isAdmin ? 'Администратор' : (document.getElementById('visitorName')?.value.trim() || 'Посетитель'),
+                    authorId: currentUserId,
+                    isAdmin: isAdmin,
+                    date: date
+                };
+                const msgRef = doc(db, "messages", messageId);
+                const msgDoc = await getDoc(msgRef);
+                if (msgDoc.exists()) {
+                    const existingReplies = msgDoc.data().replies || [];
+                    await updateDoc(msgRef, { replies: [...existingReplies, newReply] });
+                    await loadMessages();
+                    alert('Ответ добавлен!');
+                }
+            }
+        }
+
+        async function deleteReply(replyId, messageId) {
+            if (confirm('Удалить этот ответ?')) {
+                const msgRef = doc(db, "messages", messageId);
+                const msgDoc = await getDoc(msgRef);
+                if (msgDoc.exists()) {
+                    const existingReplies = msgDoc.data().replies || [];
+                    const filteredReplies = existingReplies.filter(r => r.id !== replyId);
+                    await updateDoc(msgRef, { replies: filteredReplies });
+                    await loadMessages();
+                    alert('Ответ удалён!');
+                }
+            }
         }
 
         function toggleAdminPanel() {
@@ -376,58 +455,9 @@
             renderMessages();
         }
 
-        async function showReplyPrompt(messageId) {
-            const answer = prompt('Введите ответ на вопрос:');
-            if (answer && answer.trim()) {
-                try {
-                    const messageRef = doc(db, "messages", messageId);
-                    await updateDoc(messageRef, { answer: answer.trim() });
-                    await loadMessages();
-                    alert('Ответ сохранён!');
-                } catch (error) { console.error("Ошибка:", error); alert('Ошибка сохранения ответа'); }
-            }
-        }
-
-        async function showEditReplyPrompt(messageId) {
-            const message = messages.find(m => m.id === messageId);
-            const answer = prompt('Редактировать ответ:', message.answer);
-            if (answer !== null && answer.trim()) {
-                try {
-                    const messageRef = doc(db, "messages", messageId);
-                    await updateDoc(messageRef, { answer: answer.trim() });
-                    await loadMessages();
-                    alert('Ответ обновлён!');
-                } catch (error) { console.error("Ошибка:", error); alert('Ошибка обновления ответа'); }
-            }
-        }
-
-        async function showVisitorReplyPrompt(messageId) {
-            const reply = prompt('Ваш ответ администратору:');
-            if (reply && reply.trim()) {
-                try {
-                    const messageRef = doc(db, "messages", messageId);
-                    await updateDoc(messageRef, { visitorReply: reply.trim() });
-                    await loadMessages();
-                    alert('Ваш ответ отправлен!');
-                } catch (error) { console.error("Ошибка:", error); alert('Ошибка отправки ответа'); }
-            }
-        }
-
-        async function showAdminReplyToVisitorPrompt(messageId) {
-            const reply = prompt('Ответ администратора на ответ посетителя:');
-            if (reply && reply.trim()) {
-                try {
-                    const messageRef = doc(db, "messages", messageId);
-                    await updateDoc(messageRef, { adminReplyToVisitor: reply.trim() });
-                    await loadMessages();
-                    alert('Ответ администратора сохранён!');
-                } catch (error) { console.error("Ошибка:", error); alert('Ошибка сохранения ответа'); }
-            }
-        }
-
         async function deleteMessage(messageId) {
-            if (confirm('Удалить это сообщение навсегда?')) {
-                try { await deleteDoc(doc(db, "messages", messageId)); await loadMessages(); alert('Сообщение удалено!'); }
+            if (confirm('Удалить этот вопрос со всеми ответами?')) {
+                try { await deleteDoc(doc(db, "messages", messageId)); await loadMessages(); alert('Вопрос удалён!'); }
                 catch (error) { console.error("Ошибка удаления:", error); alert('Ошибка удаления'); }
             }
         }
@@ -438,10 +468,10 @@
             if (!name || !question) { alert('Заполните имя и вопрос!'); return; }
             const date = new Date().toISOString().split('T')[0];
             try {
-                await addDoc(collection(db, "messages"), { name, question, answer: "", visitorReply: "", adminReplyToVisitor: "", date, reactions: { like: [], heart: [], angry: [] } });
+                await addDoc(collection(db, "messages"), { name, question, date, replies: [], reactions: { like: [], heart: [], angry: [], order: ['like', 'heart', 'angry'] } });
                 document.getElementById('visitorName').value = ''; document.getElementById('visitorQuestion').value = '';
                 await loadMessages();
-                alert('Вопрос отправлен! Администратор ответит в ближайшее время.');
+                alert('Вопрос отправлен!');
             } catch (error) { console.error("Ошибка отправки вопроса:", error); alert('Ошибка отправки вопроса'); }
         }
 
@@ -463,7 +493,7 @@
             try {
                 const querySnapshot = await getDocs(collection(db, "posts"));
                 posts = [];
-                querySnapshot.forEach((doc) => { posts.push({ id: doc.id, ...doc.data(), reactions: doc.data().reactions || { like: [], heart: [], angry: [] } }); });
+                querySnapshot.forEach((doc) => { posts.push({ id: doc.id, ...doc.data(), reactions: doc.data().reactions || { like: [], heart: [], angry: [], order: ['like', 'heart', 'angry'] } }); });
                 posts.sort((a, b) => new Date(b.date) - new Date(a.date));
                 renderPosts();
             } catch (error) { console.error("Ошибка загрузки постов:", error); }
@@ -474,14 +504,23 @@
             if (!container) return;
             if (posts.length === 0) { container.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">Пока нет постов. Добавьте первый!</div>'; return; }
             container.innerHTML = '';
-            posts.forEach(post => {
-                const reactions = post.reactions || { like: [], heart: [], angry: [] };
+            for (const post of posts) {
+                const reactions = post.reactions || { like: [], heart: [], angry: [], order: ['like', 'heart', 'angry'] };
                 const likeCount = reactions.like.length;
                 const heartCount = reactions.heart.length;
                 const angryCount = reactions.angry.length;
                 const userLiked = reactions.like.includes(currentUserId);
                 const userHearted = reactions.heart.includes(currentUserId);
                 const userAngry = reactions.angry.includes(currentUserId);
+                const reactionOrder = reactions.order || ['like', 'heart', 'angry'];
+                
+                let reactionsHtml = '<div class="post-reactions">';
+                for (const rt of reactionOrder) {
+                    if (rt === 'like') reactionsHtml += `<button class="reaction-btn ${userLiked ? 'active' : ''}" onclick="addPostReaction('${post.id}', 'like', event)">👍 <span class="reaction-count">${likeCount}</span></button>`;
+                    else if (rt === 'heart') reactionsHtml += `<button class="reaction-btn ${userHearted ? 'active' : ''}" onclick="addPostReaction('${post.id}', 'heart', event)">❤️ <span class="reaction-count">${heartCount}</span></button>`;
+                    else if (rt === 'angry') reactionsHtml += `<button class="reaction-btn ${userAngry ? 'active' : ''}" onclick="addPostReaction('${post.id}', 'angry', event)">😡 <span class="reaction-count">${angryCount}</span></button>`;
+                }
+                reactionsHtml += '</div>';
                 
                 const postCard = document.createElement('div');
                 postCard.className = 'post-card';
@@ -489,11 +528,7 @@
                     <div class="post-date">📅 ${post.date}</div>
                     <h3 class="post-title">${escapeHtml(post.title)}</h3>
                     <div class="post-content">${escapeHtml(post.content)}</div>
-                    <div class="post-reactions" id="post-reactions-${post.id}">
-                        <button class="reaction-btn ${userLiked ? 'active' : ''}" onclick="addPostReaction('${post.id}', 'like', event)">👍 <span class="reaction-count">${likeCount}</span></button>
-                        <button class="reaction-btn ${userHearted ? 'active' : ''}" onclick="addPostReaction('${post.id}', 'heart', event)">❤️ <span class="reaction-count">${heartCount}</span></button>
-                        <button class="reaction-btn ${userAngry ? 'active' : ''}" onclick="addPostReaction('${post.id}', 'angry', event)">😡 <span class="reaction-count">${angryCount}</span></button>
-                    </div>
+                    ${reactionsHtml}
                     <div class="post-actions" id="post-actions-${post.id}">
                         <button class="edit-btn" onclick="openEditPostModal('${post.id}')">✏️ Редактировать</button>
                         <button class="delete-btn" onclick="deletePost('${post.id}')">🗑️ Удалить</button>
@@ -501,7 +536,7 @@
                 `;
                 container.appendChild(postCard);
                 if (isAdmin) { const actionsDiv = document.getElementById(`post-actions-${post.id}`); if (actionsDiv) actionsDiv.style.display = 'flex'; }
-            });
+            }
         }
 
         async function savePost() {
@@ -511,7 +546,7 @@
             const date = new Date().toISOString().split('T')[0];
             try {
                 if (editingPostId) { const postRef = doc(db, "posts", editingPostId); await updateDoc(postRef, { title, content, date }); }
-                else { await addDoc(collection(db, "posts"), { title, content, date, reactions: { like: [], heart: [], angry: [] } }); }
+                else { await addDoc(collection(db, "posts"), { title, content, date, reactions: { like: [], heart: [], angry: [], order: ['like', 'heart', 'angry'] } }); }
                 await loadPosts(); closePostModal(); alert(editingPostId ? 'Пост обновлён!' : 'Пост добавлен!');
             } catch (error) { console.error("Ошибка сохранения поста:", error); alert('Ошибка сохранения поста'); }
         }
@@ -793,10 +828,9 @@
         window.closePostModal = closePostModal;
         window.sendQuestion = sendQuestion;
         window.deleteMessage = deleteMessage;
-        window.showReplyPrompt = showReplyPrompt;
-        window.showEditReplyPrompt = showEditReplyPrompt;
-        window.showVisitorReplyPrompt = showVisitorReplyPrompt;
-        window.showAdminReplyToVisitorPrompt = showAdminReplyToVisitorPrompt;
+        window.showReplyToQuestionPrompt = showReplyToQuestionPrompt;
+        window.showReplyToReplyPrompt = showReplyToReplyPrompt;
+        window.deleteReply = deleteReply;
         window.toggleAdminPanel = toggleAdminPanel;
         window.addPostReaction = addPostReaction;
         window.addMessageReaction = addMessageReaction;
